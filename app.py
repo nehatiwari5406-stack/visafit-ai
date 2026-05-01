@@ -1333,6 +1333,76 @@ SENIOR_LEVEL_TERMS = [
     "7+ years",
 ]
 
+ELIGIBILITY_SIGNAL_TERMS = [
+    "expected graduation date between",
+    "graduating between",
+    "graduation date between",
+    "students graduating between",
+    "class of",
+    "expected graduation",
+    "graduation date",
+    "graduates between",
+    "graduating in",
+    "recent graduate",
+    "new graduate",
+    "graduate program",
+    "analyst program",
+    "internship",
+    "off-cycle internship",
+]
+
+EARLY_CAREER_PROGRAM_TERMS = [
+    "internship",
+    "intern",
+    "off-cycle internship",
+    "off cycle internship",
+    "early career",
+    "early-career",
+    "analyst program",
+    "graduate program",
+    "new graduate",
+    "recent graduate",
+]
+
+ELIGIBILITY_RESTRICTED_OPPORTUNITY_TYPES = [
+    "Internship",
+    "Off-cycle Internship",
+    "Summer Internship",
+    "Graduate Program",
+    "Rotational Program",
+    "Leadership Development Program",
+    "Externship",
+]
+
+MONTHS = {
+    "january": 1,
+    "jan": 1,
+    "february": 2,
+    "feb": 2,
+    "march": 3,
+    "mar": 3,
+    "april": 4,
+    "apr": 4,
+    "may": 5,
+    "june": 6,
+    "jun": 6,
+    "july": 7,
+    "jul": 7,
+    "august": 8,
+    "aug": 8,
+    "september": 9,
+    "sept": 9,
+    "sep": 9,
+    "october": 10,
+    "oct": 10,
+    "november": 11,
+    "nov": 11,
+    "december": 12,
+    "dec": 12,
+}
+
+MONTH_PATTERN = "|".join(sorted(MONTHS.keys(), key=len, reverse=True))
+
 
 # -----------------------------
 # Helper Functions
@@ -1362,6 +1432,286 @@ def find_canonical_terms(text, requirement_map):
         if any(has_term(text, variant) for variant in variants):
             matches.append(canonical)
     return matches
+
+
+def has_any_pattern(text, patterns):
+    normalized = normalize_text(text)
+    return any(re.search(pattern, normalized, flags=re.IGNORECASE) for pattern in patterns)
+
+
+def detect_opportunity_type(job_text):
+    checks = [
+        ("Off-cycle Internship", [r"\boff[\s-]?cycle\s+internship\b"]),
+        ("Summer Internship", [r"\bsummer\s+(?:analyst|associate|internship|intern)\b"]),
+        (
+            "Leadership Development Program",
+            [
+                r"\bleadership\s+development\s+program(?:me)?\b",
+                r"\bfldp\b",
+                r"\brldp\b",
+                r"\bldp\b",
+            ],
+        ),
+        ("Rotational Program", [r"\brotational\s+program(?:me)?\b", r"\brotation\s+program(?:me)?\b"]),
+        (
+            "Graduate Program",
+            [
+                r"\bgraduate\s+(?:program|programme|analyst\s+program|analyst\s+programme)\b",
+                r"\bnew\s+graduate\b",
+                r"\bcampus\s+program(?:me)?\b",
+            ],
+        ),
+        ("Externship", [r"\bexternship\b"]),
+        ("Apprenticeship", [r"\bapprenticeship\b", r"\bapprentice\b"]),
+        ("Fellowship", [r"\bfellowship\b", r"\bfellow\b"]),
+        ("Returnship", [r"\breturnship\b"]),
+        ("Part-time", [r"\bpart[\s-]?time\b"]),
+        ("Contract", [r"\bcontract\b", r"\bfixed[\s-]?term\b"]),
+        ("Temporary", [r"\btemporary\b", r"\btemp\b"]),
+        ("Internship", [r"\binternship\b", r"\bintern\b"]),
+        ("Full-time", [r"\bfull[\s-]?time\b", r"\bpermanent\s+role\b"]),
+    ]
+
+    for opportunity_type, patterns in checks:
+        if has_any_pattern(job_text, patterns):
+            return opportunity_type
+
+    return "Unknown"
+
+
+def month_name(month_number):
+    full_month_names = [
+        "january",
+        "february",
+        "march",
+        "april",
+        "may",
+        "june",
+        "july",
+        "august",
+        "september",
+        "october",
+        "november",
+        "december",
+    ]
+    for name in full_month_names:
+        if MONTHS[name] == month_number:
+            return name.title()
+    return ""
+
+
+def format_month_year(month_number, year):
+    if month_number:
+        return f"{month_name(month_number)} {year}"
+    return str(year)
+
+
+def format_graduation_window(start_month, start_year, end_month, end_year):
+    if start_year == end_year and start_month == end_month:
+        return format_month_year(start_month, start_year)
+    return f"{format_month_year(start_month, start_year)}–{format_month_year(end_month, end_year)}"
+
+
+def graduation_month_year_pattern():
+    return rf"({MONTH_PATTERN})[\s-]+((?:20)\d{{2}})"
+
+
+def format_requirement_for_sentence(requirement_display):
+    return requirement_display.replace("–", " and ")
+
+
+def date_tuple(month_number, year, default_month):
+    return (year, month_number or default_month)
+
+
+def is_within_graduation_window(candidate, requirement):
+    candidate_start = date_tuple(candidate["start_month"], candidate["start_year"], 1)
+    candidate_end = date_tuple(candidate["end_month"], candidate["end_year"], 12)
+    requirement_start = date_tuple(requirement["start_month"], requirement["start_year"], 1)
+    requirement_end = date_tuple(requirement["end_month"], requirement["end_year"], 12)
+    return candidate_start >= requirement_start and candidate_end <= requirement_end
+
+
+def job_has_eligibility_signal(job_text):
+    return bool(find_terms(job_text, ELIGIBILITY_SIGNAL_TERMS))
+
+
+def is_early_career_role(job_text):
+    return bool(find_terms(job_text, EARLY_CAREER_PROGRAM_TERMS))
+
+
+def extract_jd_graduation_requirement(job_text):
+    text = normalize_text(job_text)
+    month_year = graduation_month_year_pattern()
+    range_separator = r"(?:\s+(?:and|to|or)\s+|\s*[–—]\s*|\s+-\s+|(?<=\d)-(?=[a-z]))"
+
+    month_range_patterns = [
+        rf"(?:expected graduation date between|graduating between|graduation date between|students graduating between|graduates between|between)\s+{month_year}{range_separator}{month_year}",
+        rf"{month_year}{range_separator}{month_year}",
+    ]
+    for pattern in month_range_patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match:
+            start_month_name, start_year, end_month_name, end_year = match.groups()
+            start_month = MONTHS[start_month_name.lower()]
+            end_month = MONTHS[end_month_name.lower()]
+            return {
+                "start_year": int(start_year),
+                "start_month": start_month,
+                "end_year": int(end_year),
+                "end_month": end_month,
+                "display": format_graduation_window(start_month, int(start_year), end_month, int(end_year)),
+            }
+
+    class_range = re.search(r"class of\s+((?:20)\d{2})\s*(?:or|and|/|-|–|—|to)\s*((?:20)\d{2})", text)
+    if class_range:
+        start_year, end_year = sorted([int(class_range.group(1)), int(class_range.group(2))])
+        return {
+            "start_year": start_year,
+            "start_month": 1,
+            "end_year": end_year,
+            "end_month": 12,
+            "display": format_graduation_window(1, start_year, 12, end_year),
+        }
+
+    year_range_patterns = [
+        r"(?:expected graduation date between|graduation date between|graduating between|graduates between|between)\s+((?:20)\d{2})\s*(?:and|to|-|–|—)\s*((?:20)\d{2})",
+        r"((?:20)\d{2})\s*(?:-|–|—|\s+to\s+)\s*((?:20)\d{2})",
+    ]
+    for pattern in year_range_patterns:
+        match = re.search(pattern, text)
+        if match:
+            start_year, end_year = sorted([int(match.group(1)), int(match.group(2))])
+            return {
+                "start_year": start_year,
+                "start_month": 1,
+                "end_year": end_year,
+                "end_month": 12,
+                "display": format_graduation_window(1, start_year, 12, end_year),
+            }
+
+    single_month_patterns = [
+        rf"(?:expected graduation|graduation date|graduating in)\s*:?\s*{month_year}",
+        rf"{month_year}\s+graduates",
+    ]
+    for pattern in single_month_patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match:
+            month, year = match.groups()
+            month_number = MONTHS[month.lower()]
+            return {
+                "start_year": int(year),
+                "start_month": month_number,
+                "end_year": int(year),
+                "end_month": month_number,
+                "display": format_month_year(month_number, int(year)),
+            }
+
+    single_year_patterns = [
+        r"(?:graduating in|class of)\s+((?:20)\d{2})",
+        r"((?:20)\d{2})\s+graduates",
+    ]
+    for pattern in single_year_patterns:
+        match = re.search(pattern, text)
+        if match:
+            year = int(match.group(1))
+            display = f"Class of {year}" if "class of" in match.group(0) else f"{year} graduates"
+            return {
+                "start_year": year,
+                "start_month": 1,
+                "end_year": year,
+                "end_month": 12,
+                "display": display,
+            }
+
+    return None
+
+
+def extract_candidate_graduation(profile_text):
+    text = normalize_text(profile_text)
+    month_year = graduation_month_year_pattern()
+    patterns = [
+        rf"(?:expected graduation|expected|graduation)\s*:?\s*{month_year}",
+        rf"class of\s+((?:20)\d{{2}})",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match and len(match.groups()) == 2:
+            month, year = match.groups()
+            month_number = MONTHS[month.lower()]
+            return {
+                "start_year": int(year),
+                "start_month": month_number,
+                "end_year": int(year),
+                "end_month": month_number,
+                "display": format_month_year(month_number, int(year)),
+            }
+        if match:
+            year = int(match.group(1))
+            return {
+                "start_year": year,
+                "start_month": 1,
+                "end_year": year,
+                "end_month": 12,
+                "display": f"Class of {year}",
+            }
+
+    return None
+
+
+def detect_graduation_eligibility(job_text, profile_text):
+    has_signal = job_has_eligibility_signal(job_text)
+    requirement = extract_jd_graduation_requirement(job_text)
+    candidate = extract_candidate_graduation(profile_text)
+
+    if not has_signal and not requirement:
+        return {
+            "status": "No issue detected",
+            "jd_requirement": "",
+            "candidate_graduation": candidate["display"] if candidate else "",
+            "note": "No explicit graduation-date or early-career eligibility window was detected in the JD.",
+        }
+
+    if has_signal and not requirement and candidate:
+        return {
+            "status": "Potential mismatch",
+            "jd_requirement": "",
+            "candidate_graduation": candidate["display"],
+            "note": "The JD appears to target early-career candidates, but no clear graduation window was found. Verify eligibility before applying.",
+        }
+
+    if not requirement or not candidate:
+        missing = []
+        if not requirement:
+            missing.append("JD graduation window")
+        if not candidate:
+            missing.append("candidate graduation date")
+        return {
+            "status": "Not enough information",
+            "jd_requirement": requirement["display"] if requirement else "",
+            "candidate_graduation": candidate["display"] if candidate else "",
+            "note": "Eligibility signal found, but " + " and ".join(missing) + " could not be read clearly.",
+        }
+
+    if is_within_graduation_window(candidate, requirement):
+        return {
+            "status": "No issue detected",
+            "jd_requirement": requirement["display"],
+            "candidate_graduation": candidate["display"],
+            "note": "The profile graduation date appears to fit the JD graduation eligibility window.",
+        }
+
+    return {
+        "status": "Graduation date mismatch",
+        "jd_requirement": requirement["display"],
+        "candidate_graduation": candidate["display"],
+        "note": (
+            "The JD appears to target students graduating between "
+            f"{format_requirement_for_sentence(requirement['display'])}, "
+            f"while the profile shows Expected {candidate['display']}."
+        ),
+    }
 
 
 def market_signal_config(target_market):
@@ -1740,7 +2090,14 @@ def calculate_fit_score(job_text, profile_text, function="General Business / Unk
     return round(min(score, 10.0), 1), matched, gaps, matched_advanced, advanced_gaps
 
 
-def generate_decision(fit_score, sponsorship_risk, risk_matches=None, target_market="USA"):
+def generate_decision(
+    fit_score,
+    sponsorship_risk,
+    risk_matches=None,
+    target_market="USA",
+    eligibility_risk=None,
+    opportunity_type="Unknown",
+):
     hard_blocker = has_hard_authorization_blocker(risk_matches or [], target_market)
     if hard_blocker:
         return "Skip"
@@ -1806,6 +2163,45 @@ def decision_note(decision):
     return notes[decision]
 
 
+def eligibility_note(eligibility_risk):
+    status = eligibility_risk.get("status", "No issue detected")
+    if status == "Graduation date mismatch":
+        return eligibility_risk.get("note", "Graduation eligibility mismatch detected.")
+    if status == "Potential mismatch":
+        return eligibility_risk.get("note", "Eligibility may need recruiter verification.")
+    if status == "Not enough information":
+        return eligibility_risk.get("note", "Eligibility information was not complete enough to compare.")
+    return eligibility_risk.get("note", "No graduation eligibility issue detected.")
+
+
+def eligibility_rationale_note(eligibility_risk, opportunity_type="Unknown"):
+    status = eligibility_risk.get("status")
+    jd_requirement = eligibility_risk.get("jd_requirement")
+    candidate_graduation = eligibility_risk.get("candidate_graduation")
+    if status == "Graduation date mismatch" and jd_requirement and candidate_graduation:
+        if opportunity_type in ELIGIBILITY_RESTRICTED_OPPORTUNITY_TYPES:
+            return (
+                "Eligibility risk detected: this opportunity appears to target candidates graduating in "
+                f"{jd_requirement}, while the profile shows {candidate_graduation}. Because this may be an "
+                "internship/program eligibility issue, verify with the recruiter or program FAQ before "
+                "investing significant time."
+            )
+        return (
+            "Eligibility risk detected: this opportunity appears to target candidates graduating in "
+            f"{jd_requirement}, while the profile shows {candidate_graduation}."
+        )
+    if status == "Potential mismatch":
+        return "Potential eligibility risk detected: verify early-career or graduation requirements before applying."
+    return ""
+
+
+def opportunity_type_note(opportunity_type):
+    if opportunity_type == "Unknown":
+        return "No clear opportunity type signal was found in the JD."
+    article = "an" if opportunity_type.lower().startswith(("a", "e", "i", "o", "u")) else "a"
+    return f"The JD language appears to describe {article} {opportunity_type.lower()} opportunity."
+
+
 def hard_blocker_note(risk_matches, target_market="USA"):
     market_blockers = market_hard_authorization_blockers(target_market)
     blocker_matches = [match for match in risk_matches if match in market_blockers]
@@ -1843,9 +2239,12 @@ def generate_why_decision(
     seniority_matches,
     target_market,
     market_requirement_notes=None,
+    eligibility_risk=None,
+    opportunity_type="Unknown",
 ):
     reasons = [
         f"Target market selected: {target_market}. Sponsorship analysis used {market_signal_config(target_market)['context']}",
+        f"Opportunity type is {opportunity_type}: {opportunity_type_note(opportunity_type)}",
         f"The resume fit score is {fit_score}/10, reflecting weighted core, secondary, and advanced requirement coverage rather than simple keyword overlap.",
         f"Sponsorship risk is marked as {sponsorship_risk}: {risk_note(sponsorship_risk, target_market)}",
         f"The recommended decision is {decision}: {decision_note(decision)}",
@@ -1854,6 +2253,10 @@ def generate_why_decision(
     blocker_note = hard_blocker_note(risk_matches, target_market)
     if blocker_note:
         reasons.insert(2, blocker_note)
+
+    eligibility_reason = eligibility_rationale_note(eligibility_risk or {}, opportunity_type)
+    if eligibility_reason:
+        reasons.insert(3, eligibility_reason)
 
     if market_requirement_notes:
         reasons.append(
@@ -1881,7 +2284,7 @@ def generate_why_decision(
     return reasons
 
 
-def generate_next_actions(decision, sponsorship_risk, gaps, function):
+def generate_next_actions(decision, sponsorship_risk, gaps, function, eligibility_risk=None):
     if decision == "Apply Now":
         actions = [
             f"Tailor the top third of your resume toward {function}.",
@@ -1909,6 +2312,9 @@ def generate_next_actions(decision, sponsorship_risk, gaps, function):
 
     if sponsorship_risk == "Unclear":
         actions[1] = "Verify sponsorship expectations through a recruiter, alumni contact, or company FAQ."
+
+    if (eligibility_risk or {}).get("status") == "Graduation date mismatch":
+        actions[1] = "Verify graduation-year eligibility with the recruiter or program FAQ before applying."
 
     return actions
 
@@ -2013,9 +2419,11 @@ def tracker_rows_to_csv(rows):
         "Job Link",
         "Salary Range",
         "Target Market",
+        "Opportunity Type",
         "Role Classification",
         "Resume Fit Score",
         "Sponsorship Risk",
+        "Eligibility Risk",
         "Application Decision",
         "Priority",
         "Status",
@@ -2037,6 +2445,25 @@ def status_tone(value):
         "Apply + Network": "tone-apply-network",
         "Network First": "tone-network",
         "Skip": "tone-skip",
+        "Full-time": "tone-support",
+        "Internship": "tone-role",
+        "Off-cycle Internship": "tone-role",
+        "Summer Internship": "tone-role",
+        "Graduate Program": "tone-role",
+        "Rotational Program": "tone-role",
+        "Leadership Development Program": "tone-role",
+        "Externship": "tone-role",
+        "Apprenticeship": "tone-role",
+        "Fellowship": "tone-role",
+        "Contract": "tone-friendly",
+        "Part-time": "tone-friendly",
+        "Temporary": "tone-friendly",
+        "Returnship": "tone-role",
+        "Unknown": "tone-unclear",
+        "No issue detected": "tone-support",
+        "Potential mismatch": "tone-friendly",
+        "Graduation date mismatch": "tone-no",
+        "Not enough information": "tone-unclear",
     }
     return tones.get(value, "")
 
@@ -2135,6 +2562,8 @@ with st.sidebar:
             """
             - Resume and skill alignment
             - Sponsorship language and risk
+            - Opportunity type
+            - Graduation-date eligibility risk
             - Role category and fit signals
             - Match strengths, gaps, and next actions
             """
@@ -2201,6 +2630,8 @@ st.markdown(
         <div class="hero-stats">
             <span class="hero-chip">Resume fit</span>
             <span class="hero-chip">Global sponsorship signal</span>
+            <span class="hero-chip">Opportunity type</span>
+            <span class="hero-chip">Eligibility risk</span>
             <span class="hero-chip">Role classification</span>
             <span class="hero-chip">Outreach actions</span>
         </div>
@@ -2289,6 +2720,8 @@ if analyze:
     else:
         sponsorship_risk, risk_matches = detect_sponsorship_risk(job_description, target_market)
         market_requirement_notes = detect_market_requirement_notes(job_description, target_market)
+        opportunity_type = detect_opportunity_type(job_description)
+        eligibility_risk = detect_graduation_eligibility(job_description, profile_summary)
         function, category_scores = classify_function(job_description)
         seniority, seniority_matches = detect_seniority(job_description)
         keywords = extract_keywords(job_description)
@@ -2299,7 +2732,14 @@ if analyze:
             seniority,
             seniority_matches,
         )
-        decision = generate_decision(fit_score, sponsorship_risk, risk_matches, target_market)
+        decision = generate_decision(
+            fit_score,
+            sponsorship_risk,
+            risk_matches,
+            target_market,
+            eligibility_risk,
+            opportunity_type,
+        )
         outreach = generate_outreach(function)
         why_decision = generate_why_decision(
             fit_score,
@@ -2313,8 +2753,10 @@ if analyze:
             seniority_matches,
             target_market,
             market_requirement_notes,
+            eligibility_risk,
+            opportunity_type,
         )
-        next_actions = generate_next_actions(decision, sponsorship_risk, gaps, function)
+        next_actions = generate_next_actions(decision, sponsorship_risk, gaps, function, eligibility_risk)
         st.session_state.analysis_result = {
             "company_name": company_name.strip(),
             "role_title": role_title.strip(),
@@ -2322,8 +2764,10 @@ if analyze:
             "job_link": job_link.strip(),
             "salary_range": salary_range.strip(),
             "target_market": target_market,
+            "opportunity_type": opportunity_type,
             "sponsorship_risk": sponsorship_risk,
             "risk_matches": risk_matches,
+            "eligibility_risk": eligibility_risk,
             "market_requirement_notes": market_requirement_notes,
             "function": function,
             "category_scores": category_scores,
@@ -2345,8 +2789,10 @@ analysis_result = st.session_state.analysis_result
 
 if analysis_result:
     target_market = analysis_result.get("target_market", "USA")
+    opportunity_type = analysis_result.get("opportunity_type", "Unknown")
     sponsorship_risk = analysis_result["sponsorship_risk"]
     risk_matches = analysis_result["risk_matches"]
+    eligibility_risk = analysis_result.get("eligibility_risk", {})
     market_requirement_notes = analysis_result.get("market_requirement_notes", [])
     function = analysis_result["function"]
     category_scores = analysis_result["category_scores"]
@@ -2366,7 +2812,7 @@ if analysis_result:
     st.subheader("Executive Fit Dashboard")
     st.caption("A fast triage view for deciding whether this role deserves an application, networking effort, or deprioritization.")
 
-    card1, card2, card3, card4 = st.columns(4)
+    card1, card2, card3 = st.columns(3)
 
     with card1:
         render_card(
@@ -2393,7 +2839,25 @@ if analysis_result:
             status_tone(decision),
         )
 
+    card4, card5, card6 = st.columns(3)
+
     with card4:
+        render_card(
+            "Opportunity Type",
+            opportunity_type,
+            opportunity_type_note(opportunity_type),
+            status_tone(opportunity_type),
+        )
+
+    with card5:
+        render_card(
+            "Eligibility Risk",
+            eligibility_risk.get("status", "No issue detected"),
+            eligibility_note(eligibility_risk),
+            status_tone(eligibility_risk.get("status", "No issue detected")),
+        )
+
+    with card6:
         render_card(
             "Role Classification",
             function,
@@ -2413,6 +2877,30 @@ if analysis_result:
         )
         for reason in why_decision:
             st.write("- " + reason)
+
+        st.subheader("Opportunity & Eligibility")
+        detail_col1, detail_col2 = st.columns(2)
+        with detail_col1:
+            render_card(
+                "Opportunity Type",
+                opportunity_type,
+                opportunity_type_note(opportunity_type),
+                status_tone(opportunity_type),
+            )
+        with detail_col2:
+            render_card(
+                "Eligibility Risk",
+                eligibility_risk.get("status", "No issue detected"),
+                eligibility_note(eligibility_risk),
+                status_tone(eligibility_risk.get("status", "No issue detected")),
+            )
+        if eligibility_risk.get("jd_requirement") or eligibility_risk.get("candidate_graduation"):
+            st.write(
+                "JD graduation requirement: "
+                + (eligibility_risk.get("jd_requirement") or "Not found")
+                + " | Profile graduation: "
+                + (eligibility_risk.get("candidate_graduation") or "Not found")
+            )
 
         st.subheader("Priority Actions")
         st.markdown(
@@ -2530,13 +3018,22 @@ if analysis_result:
                     "Job Link": analysis_result["job_link"],
                     "Salary Range": analysis_result["salary_range"],
                     "Target Market": target_market,
+                    "Opportunity Type": opportunity_type,
                     "Role Classification": function,
                     "Resume Fit Score": fit_score,
                     "Sponsorship Risk": sponsorship_risk,
+                    "Eligibility Risk": eligibility_risk.get("status", "No issue detected"),
                     "Application Decision": decision,
                     "Priority": priority,
                     "Status": status,
-                    "Notes": decision_note(decision),
+                    "Notes": " ".join(
+                        note
+                        for note in [
+                            decision_note(decision),
+                            eligibility_rationale_note(eligibility_risk, opportunity_type),
+                        ]
+                        if note
+                    ),
                 }
             )
             st.success("Added this role to the Job Tracker.")
