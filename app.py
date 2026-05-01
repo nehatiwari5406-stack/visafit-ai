@@ -18,48 +18,161 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+    :root {
+        --vf-bg: #f6f8fb;
+        --vf-card: #ffffff;
+        --vf-border: #dbe4ee;
+        --vf-text: #0f172a;
+        --vf-muted: #64748b;
+        --vf-blue: #1d4ed8;
+        --vf-blue-soft: #eff6ff;
+        --vf-green: #059669;
+        --vf-green-soft: #ecfdf5;
+        --vf-amber: #d97706;
+        --vf-orange: #ea580c;
+        --vf-red: #dc2626;
+        --vf-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+        --vf-shadow-soft: 0 6px 18px rgba(15, 23, 42, 0.045);
+    }
+    html, body, [data-testid="stAppViewContainer"] {
+        background:
+            radial-gradient(circle at top left, rgba(37, 99, 235, 0.055), transparent 26rem),
+            linear-gradient(180deg, #fbfdff 0%, var(--vf-bg) 48%, #f8fafc 100%);
+        color: var(--vf-text);
+    }
     .block-container {
-        padding-top: 2rem;
-        padding-bottom: 3rem;
-        max-width: 1180px;
+        padding-top: 0.95rem;
+        padding-bottom: 2.4rem;
+        max-width: 1120px;
+    }
+    [data-testid="stSidebar"] {
+        background: #fbfdff;
+        border-right: 1px solid #e7edf5;
+        box-shadow: inset -1px 0 0 rgba(148, 163, 184, 0.08);
+    }
+    [data-testid="stSidebar"] > div:first-child {
+        padding-top: 1.35rem;
+    }
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
+        color: #64748b;
+        line-height: 1.45;
+        font-size: 0.9rem;
+    }
+    [data-testid="stSidebar"] h1 {
+        color: #1e293b;
+        font-size: 1.28rem;
+        letter-spacing: 0;
+    }
+    [data-testid="stSidebar"] h3 {
+        color: #475569;
+        font-size: 0.78rem;
+        margin-top: 1.1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+    [data-testid="stSidebar"] [data-testid="stAlert"] {
+        border-radius: 8px;
+        border: 1px solid #fde68a;
+        background: #fffbeb;
     }
     .hero {
-        border: 1px solid #d7dde8;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid #d9e5f3;
         border-radius: 8px;
         padding: 1.25rem 1.35rem;
-        background: #f8fafc;
-        margin-bottom: 1.25rem;
+        background:
+            linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(239, 246, 255, 0.92)),
+            #ffffff;
+        box-shadow: var(--vf-shadow-soft);
+        margin-bottom: 0.8rem;
+    }
+    .hero:after {
+        content: "";
+        position: absolute;
+        right: -4rem;
+        top: -5.5rem;
+        width: 16rem;
+        height: 16rem;
+        border-radius: 999px;
+        background: rgba(5, 150, 105, 0.08);
+    }
+    .eyebrow {
+        color: var(--vf-blue);
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        margin-bottom: 0.45rem;
+        text-transform: uppercase;
     }
     .hero h1 {
-        margin: 0 0 0.35rem 0;
-        font-size: 2.25rem;
+        margin: 0 0 0.25rem 0;
+        color: #102033;
+        font-size: 2.08rem;
         line-height: 1.15;
         letter-spacing: 0;
+        position: relative;
+        z-index: 1;
     }
     .hero p {
         margin: 0;
-        color: #475569;
-        font-size: 1rem;
+        color: #526173;
+        font-size: 0.98rem;
+        max-width: 720px;
+        position: relative;
+        z-index: 1;
+    }
+    .hero-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.85rem;
+        position: relative;
+        z-index: 1;
+    }
+    .hero-chip {
+        border: 1px solid #cfe0f5;
+        border-radius: 999px;
+        padding: 0.34rem 0.68rem;
+        background: #ffffff;
+        color: #315172;
+        font-size: 0.8rem;
+        font-weight: 650;
+    }
+    .top-action-row {
+        display: flex;
+        align-items: center;
+        min-height: 2.55rem;
+    }
+    .section-card {
+        border: 1px solid var(--vf-border);
+        border-radius: 8px;
+        padding: 1rem 1.05rem;
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: var(--vf-shadow-soft);
+        margin-bottom: 1rem;
     }
     .result-card {
-        border: 1px solid #d7dde8;
+        border: 1px solid var(--vf-border);
         border-radius: 8px;
-        padding: 1rem;
-        min-height: 126px;
+        padding: 1rem 1rem 0.95rem 1rem;
+        min-height: 152px;
         background: #ffffff;
+        box-shadow: var(--vf-shadow-soft);
+        border-top: 4px solid var(--card-accent, var(--vf-blue));
     }
     .result-label {
-        color: #64748b;
+        color: var(--vf-muted);
         font-size: 0.78rem;
-        font-weight: 700;
+        font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.04em;
         margin-bottom: 0.4rem;
     }
     .result-value {
-        color: #0f172a;
-        font-size: 1.45rem;
-        font-weight: 750;
+        color: var(--vf-text);
+        font-size: 1.48rem;
+        font-weight: 800;
         line-height: 1.2;
         margin-bottom: 0.45rem;
     }
@@ -68,27 +181,154 @@ st.markdown(
         font-size: 0.9rem;
         line-height: 1.35;
     }
+    .tone-fit { --card-accent: #0ea5e9; }
+    .tone-support { --card-accent: var(--vf-green); }
+    .tone-friendly { --card-accent: #eab308; }
+    .tone-unclear { --card-accent: #94a3b8; }
+    .tone-no { --card-accent: var(--vf-red); }
+    .tone-apply { --card-accent: var(--vf-green); }
+    .tone-network { --card-accent: var(--vf-amber); }
+    .tone-skip { --card-accent: var(--vf-red); }
+    .tone-role { --card-accent: var(--vf-blue); }
+    .tone-match { --pill-bg: #ecfdf5; --pill-border: #bbf7d0; --pill-color: #166534; }
+    .tone-gap { --pill-bg: #fff7ed; --pill-border: #fed7aa; --pill-color: #9a3412; }
+    .tone-risk { --pill-bg: #eff6ff; --pill-border: #bfdbfe; --pill-color: #1d4ed8; }
     .pill {
         display: inline-block;
         border-radius: 999px;
-        padding: 0.22rem 0.6rem;
-        background: #eef2f7;
-        color: #263244;
-        font-size: 0.86rem;
-        border: 1px solid #d7dde8;
+        padding: 0.34rem 0.7rem;
+        background: var(--pill-bg, #f1f5f9);
+        color: var(--pill-color, #334155);
+        font-size: 0.84rem;
+        font-weight: 650;
+        border: 1px solid var(--pill-border, var(--vf-border));
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     }
     .pill-row {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.4rem 0.45rem;
-        margin: 0.35rem 0 0.85rem 0;
+        gap: 0.5rem;
+        margin: 0.4rem 0 0.9rem 0;
     }
     .small-muted {
-        color: #64748b;
+        color: var(--vf-muted);
         font-size: 0.9rem;
+        line-height: 1.45;
+    }
+    .caption {
+        color: var(--vf-muted);
+        font-size: 0.86rem;
+        line-height: 1.4;
+        margin: -0.2rem 0 0.85rem 0;
+    }
+    .action-card {
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-start;
+        border: 1px solid var(--vf-border);
+        border-radius: 8px;
+        padding: 0.85rem 0.9rem;
+        background: #ffffff;
+        margin-bottom: 0.65rem;
+        box-shadow: var(--vf-shadow-soft);
+    }
+    .action-number {
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-weight: 800;
+        flex: 0 0 auto;
+    }
+    .signal-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        border-bottom: 1px solid #eef2f7;
+        padding: 0.5rem 0;
+        color: #334155;
+    }
+    .signal-score {
+        color: #0f172a;
+        font-weight: 800;
+    }
+    div[data-testid="stTabs"] button p {
+        font-weight: 750;
+        color: #334155;
+    }
+    div[data-testid="stTabs"] [data-baseweb="tab-list"] {
+        gap: 0.35rem;
+        border-bottom: 1px solid #e5edf6;
+    }
+    div[data-testid="stTabs"] [data-baseweb="tab"] {
+        border-radius: 8px 8px 0 0;
+        padding-top: 0.65rem;
+        padding-bottom: 0.65rem;
+    }
+    div[data-testid="column"] {
+        min-width: 0;
+    }
+    div[data-testid="stTextArea"] {
+        padding: 0.95rem 1rem 0.85rem 1rem;
+        border: 1px solid var(--vf-border);
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: var(--vf-shadow-soft);
+    }
+    div[data-testid="stTextArea"] label p {
+        color: #1e293b;
+        font-size: 0.92rem;
+        font-weight: 800;
+    }
+    div[data-testid="stTextArea"] textarea {
+        border-radius: 8px;
+        border-color: #d6e0eb;
+        background: #fbfdff;
+        box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.025);
+        font-size: 0.92rem;
+        line-height: 1.48;
+    }
+    div[data-testid="stTextArea"] textarea:focus {
+        border-color: #60a5fa;
+        box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.18);
+    }
+    div[data-testid="stButton"] button {
+        border-radius: 8px;
+        font-weight: 750;
+        min-height: 2.55rem;
+    }
+    div[data-testid="stButton"] button[kind="primary"] {
+        background: linear-gradient(135deg, #1d4ed8, #047857);
+        border: 1px solid rgba(29, 78, 216, 0.85);
+        box-shadow: 0 8px 18px rgba(29, 78, 216, 0.16);
+    }
+    div[data-testid="stButton"] button[kind="primary"]:hover {
+        background: linear-gradient(135deg, #1e40af, #03685f);
+        border-color: #1e40af;
+    }
+    div[data-testid="stButton"] button[kind="secondary"] {
+        border-color: #cbd8e7;
+        color: #1e3a5f;
+        background: #ffffff;
+    }
+    div[data-testid="stButton"] button[kind="secondary"]:hover {
+        border-color: #93b4d9;
+        color: #1d4ed8;
+        background: #f8fbff;
     }
     div[data-testid="stMetricValue"] {
         font-size: 1.75rem;
+    }
+    .stCaption {
+        color: var(--vf-muted);
+    }
+    hr {
+        margin: 1.05rem 0;
     }
     </style>
     """,
@@ -471,24 +711,50 @@ def generate_next_actions(decision, sponsorship_risk, gaps, function):
     return actions
 
 
-def render_card(label, value, note):
+def status_tone(value):
+    tones = {
+        "Explicitly Supports": "tone-support",
+        "Possibly Friendly": "tone-friendly",
+        "Unclear": "tone-unclear",
+        "Likely No": "tone-no",
+        "Apply Now": "tone-apply",
+        "Network First": "tone-network",
+        "Skip": "tone-skip",
+    }
+    return tones.get(value, "")
+
+
+def render_card(label, value, note, tone=""):
     st.markdown(
         f"""
-        <div class="result-card">
-            <div class="result-label">{label}</div>
-            <div class="result-value">{value}</div>
-            <div class="result-note">{note}</div>
+        <div class="result-card {tone}">
+            <div class="result-label">{html.escape(label)}</div>
+            <div class="result-value">{html.escape(str(value))}</div>
+            <div class="result-note">{html.escape(note)}</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
 
-def render_pills(items):
+def render_pills(items, tone=""):
     pill_html = " ".join(
         f'<span class="pill">{html.escape(item)}</span>' for item in items
     )
-    st.markdown(f'<div class="pill-row">{pill_html}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="pill-row {tone}">{pill_html}</div>', unsafe_allow_html=True)
+
+
+def render_actions(actions):
+    for number, action in enumerate(actions, start=1):
+        st.markdown(
+            f"""
+            <div class="action-card">
+                <div class="action-number">{number}</div>
+                <div>{html.escape(action)}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 # -----------------------------
@@ -497,18 +763,18 @@ def render_pills(items):
 
 with st.sidebar:
     st.title("VisaFit AI")
-    st.caption("Job fit and sponsorship risk analyzer")
+    st.caption("Executive job-fit dashboard")
 
-    st.subheader("Who this helps")
+    st.subheader("Focus")
     st.write(
         "International MBA students and early-career professionals deciding which roles "
-        "deserve an application, networking effort, or quick pass."
+        "deserve an application, a networking push, or a quick pass."
     )
 
-    st.subheader("How to use it")
+    st.subheader("Workflow")
     st.write(
         "Paste a job description, review or edit the profile summary, then run the analysis. "
-        "Use the decision, gaps, and next actions to prioritize your search."
+        "Use the decision, gaps, and next actions to prioritize your search queue."
     )
 
     st.subheader("Disclaimer")
@@ -533,6 +799,12 @@ st.markdown(
     <div class="hero">
         <h1>VisaFit AI</h1>
         <p>Prioritize job applications with a simple read on resume fit, sponsorship signal, role type, and next steps.</p>
+        <div class="hero-stats">
+            <span class="hero-chip">Resume fit</span>
+            <span class="hero-chip">Sponsorship signal</span>
+            <span class="hero-chip">Role classification</span>
+            <span class="hero-chip">Outreach actions</span>
+        </div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -542,7 +814,7 @@ top_col1, top_col2 = st.columns([0.72, 0.28])
 
 with top_col1:
     st.markdown(
-        '<div class="small-muted">Paste a JD, compare it with your profile, and get a practical application recommendation.</div>',
+        '<div class="top-action-row"><div class="small-muted">Paste a JD, compare it with your profile, and get a practical recommendation for where to spend time.</div></div>',
         unsafe_allow_html=True,
     )
 
@@ -559,6 +831,7 @@ with input_col:
         height=330,
         placeholder="Paste the full job description here, including qualifications and work authorization language.",
     )
+    st.caption("Include qualifications and work authorization language for the strongest signal.")
 
 with profile_col:
     profile_summary = st.text_area(
@@ -566,6 +839,7 @@ with profile_col:
         key="profile_summary",
         height=330,
     )
+    st.caption("Tune this summary to reflect the resume version you would actually submit.")
 
 analyze = st.button("Analyze Job", type="primary", use_container_width=True)
 
@@ -591,6 +865,7 @@ if analyze:
 
         st.divider()
         st.subheader("Executive Fit Dashboard")
+        st.caption("A fast triage view for deciding whether this role deserves an application, networking effort, or deprioritization.")
 
         card1, card2, card3, card4 = st.columns(4)
 
@@ -599,6 +874,7 @@ if analyze:
                 "Resume Fit Score",
                 f"{fit_score}/10",
                 f"{fit_summary(fit_score)} based on tracked role requirements.",
+                "tone-fit",
             )
             st.progress(min(fit_score / 10, 1.0))
 
@@ -607,6 +883,7 @@ if analyze:
                 "Sponsorship Risk",
                 sponsorship_risk,
                 risk_note(sponsorship_risk),
+                status_tone(sponsorship_risk),
             )
 
         with card3:
@@ -614,6 +891,7 @@ if analyze:
                 "Application Decision",
                 decision,
                 "Recommended next move based on fit and sponsorship signal.",
+                status_tone(decision),
             )
 
         with card4:
@@ -621,43 +899,91 @@ if analyze:
                 "Role Classification",
                 function,
                 "Primary role family inferred from the strongest business signals.",
+                "tone-role",
             )
 
-        st.subheader("Decision Rationale")
-        for reason in why_decision:
-            st.write("- " + reason)
+        overview_tab, match_tab, sponsorship_tab, actions_tab = st.tabs(
+            ["Overview", "Match Analysis", "Sponsorship", "Outreach & Actions"]
+        )
 
-        st.subheader("Priority Actions")
-        for number, action in enumerate(next_actions, start=1):
-            st.write(f"{number}. {action}")
+        with overview_tab:
+            st.subheader("Decision Rationale")
+            st.markdown(
+                '<div class="caption">These points combine role fit, sponsorship signal, and keyword evidence into one recommended next move.</div>',
+                unsafe_allow_html=True,
+            )
+            for reason in why_decision:
+                st.write("- " + reason)
 
-        detail_col1, detail_col2 = st.columns(2)
+            st.subheader("Priority Actions")
+            st.markdown(
+                '<div class="caption">Use these actions to decide how much time to invest before submitting or moving on.</div>',
+                unsafe_allow_html=True,
+            )
+            render_actions(next_actions)
 
-        with detail_col1:
+        with match_tab:
             st.subheader("Keyword Alignment")
-            if matched_keywords:
-                st.markdown("Matched keywords")
-                render_pills(matched_keywords)
-            else:
-                st.write("No tracked keywords from the job description were found in the profile summary.")
+            st.markdown(
+                '<div class="caption">Matched keywords are requirements already reflected in your profile. Resume gaps are useful prompts for tailoring.</div>',
+                unsafe_allow_html=True,
+            )
 
-            if gaps:
-                st.markdown("Resume gaps")
-                render_pills(gaps)
-            else:
-                st.write("Strong keyword alignment. No major tracked gaps detected.")
+            match_col, gap_col = st.columns(2)
 
-        with detail_col2:
-            st.subheader("Sponsorship Signals")
+            with match_col:
+                st.markdown("**Matched keywords**")
+                if matched_keywords:
+                    render_pills(matched_keywords, "tone-match")
+                else:
+                    st.write("No tracked keywords from the job description were found in the profile summary.")
+
+            with gap_col:
+                st.markdown("**Resume gaps**")
+                if gaps:
+                    render_pills(gaps, "tone-gap")
+                else:
+                    st.write("Strong keyword alignment. No major tracked gaps detected.")
+
+            with st.expander("Role category signal detail"):
+                sorted_scores = sorted(category_scores.items(), key=lambda item: item[1], reverse=True)
+                for category, score in sorted_scores:
+                    st.markdown(
+                        f"""
+                        <div class="signal-row">
+                            <span>{html.escape(category)}</span>
+                            <span class="signal-score">{score}</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+        with sponsorship_tab:
+            st.subheader("Sponsorship Signal")
+            st.markdown(
+                '<div class="caption">This reads the posting for language that may indicate sponsorship support or restrictions. Confirm directly with the employer before relying on it.</div>',
+                unsafe_allow_html=True,
+            )
+            render_card(
+                "Detected Risk Level",
+                sponsorship_risk,
+                risk_note(sponsorship_risk),
+                status_tone(sponsorship_risk),
+            )
+
+            st.markdown("**Detected signal terms**")
             if risk_matches:
-                render_pills(risk_matches)
+                render_pills(risk_matches, "tone-risk")
             else:
                 st.write("No clear sponsorship terms were detected.")
 
+        with actions_tab:
             st.subheader("Recommended Outreach")
+            st.markdown(
+                '<div class="caption">A concise note you can adapt for alumni, recruiters, or team members before applying.</div>',
+                unsafe_allow_html=True,
+            )
             st.info(outreach)
 
-        with st.expander("Role category signal detail"):
-            sorted_scores = sorted(category_scores.items(), key=lambda item: item[1], reverse=True)
-            for category, score in sorted_scores:
-                st.write(f"{category}: {score}")
+            st.subheader("Priority Actions")
+            render_actions(next_actions)
