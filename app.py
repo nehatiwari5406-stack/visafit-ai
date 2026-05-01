@@ -1,5 +1,8 @@
+import csv
 import html
+import io
 import re
+from datetime import date
 
 import streamlit as st
 
@@ -1679,6 +1682,119 @@ def generate_next_actions(decision, sponsorship_risk, gaps, function):
     return actions
 
 
+def infer_role_title(job_text):
+    clean_lines = [
+        line.strip(" -|:")
+        for line in job_text.splitlines()[:12]
+        if line.strip() and len(line.strip()) <= 90
+    ]
+    title_terms = [
+        "analyst",
+        "associate",
+        "manager",
+        "consultant",
+        "director",
+        "strategy",
+        "finance",
+        "fp&a",
+        "corporate development",
+        "business operations",
+        "investment banking",
+    ]
+    skip_terms = ["about", "responsibilities", "qualifications", "requirements", "description"]
+
+    for line in clean_lines:
+        normalized = normalize_text(line)
+        if any(skip in normalized for skip in skip_terms):
+            continue
+        if any(term in normalized for term in title_terms):
+            return line
+
+    return clean_lines[0] if clean_lines else ""
+
+
+def infer_salary_range(job_text):
+    salary_pattern = re.compile(
+        r"\$\s?\d{2,3}(?:,\d{3})?(?:\s?[kK])?(?:\s?[-\u2013\u2014]\s?\$\s?\d{2,3}(?:,\d{3})?(?:\s?[kK])?)?"
+    )
+    match = salary_pattern.search(job_text)
+    return match.group(0).strip() if match else ""
+
+
+def infer_location(job_text):
+    location_patterns = [
+        r"\bNew York\b",
+        r"\bNYC\b",
+        r"\bAtlanta\b",
+        r"\bRemote\b",
+        r"\bHybrid\b",
+        r"\bWashington,\s?DC\b",
+        r"\bBoston\b",
+        r"\bChicago\b",
+        r"\bSan Francisco\b",
+        r"\bLos Angeles\b",
+        r"\bCharlotte\b",
+        r"\bDallas\b",
+        r"\bAustin\b",
+        r"\bSeattle\b",
+        r"\bRichmond\b",
+    ]
+    for pattern in location_patterns:
+        match = re.search(pattern, job_text, flags=re.IGNORECASE)
+        if match:
+            return match.group(0)
+
+    city_state_match = re.search(r"\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)?,\s?[A-Z]{2}\b", job_text)
+    return city_state_match.group(0) if city_state_match else ""
+
+
+def infer_job_metadata(job_text):
+    return {
+        "role_title": infer_role_title(job_text),
+        "location": infer_location(job_text),
+        "salary_range": infer_salary_range(job_text),
+    }
+
+
+def tracker_priority(decision, fit_score):
+    if decision in ["Apply Now", "Apply + Network"] and fit_score >= 8:
+        return "High"
+    if decision == "Network First":
+        return "Medium"
+    if decision == "Skip":
+        return "Low"
+    return "Medium"
+
+
+def tracker_status(decision):
+    if decision == "Skip":
+        return "Skipped"
+    return "Not Applied"
+
+
+def tracker_rows_to_csv(rows):
+    output = io.StringIO()
+    fieldnames = [
+        "Date Added",
+        "Company Name",
+        "Role Title",
+        "Location",
+        "Job Link",
+        "Salary Range",
+        "Role Classification",
+        "Resume Fit Score",
+        "Sponsorship Risk",
+        "Application Decision",
+        "Priority",
+        "Status",
+        "Notes",
+    ]
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerows(rows)
+    return output.getvalue()
+
+
 def status_tone(value):
     tones = {
         "Explicitly Supports": "tone-support",
@@ -1832,6 +1948,12 @@ if "job_description" not in st.session_state:
 if "profile_summary" not in st.session_state:
     st.session_state.profile_summary = DEFAULT_PROFILE
 
+if "job_tracker" not in st.session_state:
+    st.session_state.job_tracker = []
+
+if "analysis_result" not in st.session_state:
+    st.session_state.analysis_result = None
+
 st.markdown(
     """
     <div class="hero">
@@ -1879,6 +2001,40 @@ with profile_col:
     )
     st.caption("Tune this summary to reflect the resume version you would actually submit.")
 
+metadata_defaults = infer_job_metadata(job_description)
+
+with st.expander("Optional job tracker details"):
+    st.caption("VisaFit AI pre-fills simple guesses from the job description when it can.")
+    meta_col1, meta_col2, meta_col3 = st.columns([1, 1, 1])
+    meta_col4, meta_col5 = st.columns([1.35, 1])
+
+    with meta_col1:
+        company_name = st.text_input("Company Name", placeholder="Company")
+
+    with meta_col2:
+        role_title = st.text_input(
+            "Role Title",
+            value=metadata_defaults["role_title"],
+            placeholder="Role title",
+        )
+
+    with meta_col3:
+        location = st.text_input(
+            "Location",
+            value=metadata_defaults["location"],
+            placeholder="City, state, remote, or hybrid",
+        )
+
+    with meta_col4:
+        job_link = st.text_input("Job Link", placeholder="https://...")
+
+    with meta_col5:
+        salary_range = st.text_input(
+            "Salary Range",
+            value=metadata_defaults["salary_range"],
+            placeholder="$90,000 - $120,000",
+        )
+
 analyze = st.button("Analyze Job", type="primary", use_container_width=True)
 
 if analyze:
@@ -1910,144 +2066,281 @@ if analyze:
             seniority_matches,
         )
         next_actions = generate_next_actions(decision, sponsorship_risk, gaps, function)
+        st.session_state.analysis_result = {
+            "company_name": company_name.strip(),
+            "role_title": role_title.strip(),
+            "location": location.strip(),
+            "job_link": job_link.strip(),
+            "salary_range": salary_range.strip(),
+            "sponsorship_risk": sponsorship_risk,
+            "risk_matches": risk_matches,
+            "function": function,
+            "category_scores": category_scores,
+            "seniority": seniority,
+            "seniority_matches": seniority_matches,
+            "keywords": keywords,
+            "fit_score": fit_score,
+            "matched_keywords": matched_keywords,
+            "gaps": gaps,
+            "matched_advanced": matched_advanced,
+            "advanced_gaps": advanced_gaps,
+            "decision": decision,
+            "outreach": outreach,
+            "why_decision": why_decision,
+            "next_actions": next_actions,
+        }
 
-        st.divider()
-        st.subheader("Executive Fit Dashboard")
-        st.caption("A fast triage view for deciding whether this role deserves an application, networking effort, or deprioritization.")
+analysis_result = st.session_state.analysis_result
 
-        card1, card2, card3, card4 = st.columns(4)
+if analysis_result:
+    sponsorship_risk = analysis_result["sponsorship_risk"]
+    risk_matches = analysis_result["risk_matches"]
+    function = analysis_result["function"]
+    category_scores = analysis_result["category_scores"]
+    seniority = analysis_result["seniority"]
+    seniority_matches = analysis_result["seniority_matches"]
+    fit_score = analysis_result["fit_score"]
+    matched_keywords = analysis_result["matched_keywords"]
+    gaps = analysis_result["gaps"]
+    matched_advanced = analysis_result["matched_advanced"]
+    advanced_gaps = analysis_result["advanced_gaps"]
+    decision = analysis_result["decision"]
+    outreach = analysis_result["outreach"]
+    why_decision = analysis_result["why_decision"]
+    next_actions = analysis_result["next_actions"]
 
-        with card1:
-            render_card(
-                "Resume Fit Score",
-                f"{fit_score}/10",
-                f"{fit_summary(fit_score)} based on tracked role requirements.",
-                "tone-fit",
-            )
-            st.progress(min(fit_score / 10, 1.0))
+    st.divider()
+    st.subheader("Executive Fit Dashboard")
+    st.caption("A fast triage view for deciding whether this role deserves an application, networking effort, or deprioritization.")
 
-        with card2:
-            render_card(
-                "Sponsorship Risk",
-                sponsorship_risk,
-                risk_note(sponsorship_risk),
-                status_tone(sponsorship_risk),
-            )
+    card1, card2, card3, card4 = st.columns(4)
 
-        with card3:
-            render_card(
-                "Application Decision",
-                decision,
-                "Recommended next move based on fit and sponsorship signal.",
-                status_tone(decision),
-            )
+    with card1:
+        render_card(
+            "Resume Fit Score",
+            f"{fit_score}/10",
+            f"{fit_summary(fit_score)} based on tracked role requirements.",
+            "tone-fit",
+        )
+        st.progress(min(fit_score / 10, 1.0))
 
-        with card4:
-            render_card(
-                "Role Classification",
-                function,
-                "Primary role family inferred from the strongest business signals.",
-                "tone-role",
-            )
-
-        overview_tab, match_tab, sponsorship_tab, actions_tab = st.tabs(
-            ["Overview", "Match Analysis", "Sponsorship", "Outreach & Actions"]
+    with card2:
+        render_card(
+            "Sponsorship Risk",
+            sponsorship_risk,
+            risk_note(sponsorship_risk),
+            status_tone(sponsorship_risk),
         )
 
-        with overview_tab:
-            st.subheader("Decision Rationale")
-            st.markdown(
-                '<div class="caption">These points combine role fit, sponsorship signal, and keyword evidence into one recommended next move.</div>',
-                unsafe_allow_html=True,
-            )
-            for reason in why_decision:
-                st.write("- " + reason)
+    with card3:
+        render_card(
+            "Application Decision",
+            decision,
+            "Recommended next move based on fit and sponsorship signal.",
+            status_tone(decision),
+        )
 
-            st.subheader("Priority Actions")
-            st.markdown(
-                '<div class="caption">Use these actions to decide how much time to invest before submitting or moving on.</div>',
-                unsafe_allow_html=True,
-            )
-            render_actions(next_actions)
+    with card4:
+        render_card(
+            "Role Classification",
+            function,
+            "Primary role family inferred from the strongest business signals.",
+            "tone-role",
+        )
 
-        with match_tab:
-            st.subheader("Keyword Alignment")
-            st.markdown(
-                '<div class="caption">Matched keywords are requirements already reflected in your profile. Resume gaps are useful prompts for tailoring.</div>',
-                unsafe_allow_html=True,
-            )
+    overview_tab, match_tab, sponsorship_tab, actions_tab, tracker_tab = st.tabs(
+        ["Overview", "Match Analysis", "Sponsorship", "Outreach & Actions", "Job Tracker"]
+    )
 
-            match_col, gap_col = st.columns(2)
+    with overview_tab:
+        st.subheader("Decision Rationale")
+        st.markdown(
+            '<div class="caption">These points combine role fit, sponsorship signal, and keyword evidence into one recommended next move.</div>',
+            unsafe_allow_html=True,
+        )
+        for reason in why_decision:
+            st.write("- " + reason)
 
-            with match_col:
-                st.markdown("**Matched keywords**")
-                if matched_keywords:
-                    render_pills(matched_keywords, "tone-match")
-                else:
-                    st.write("No tracked keywords from the job description were found in the profile summary.")
+        st.subheader("Priority Actions")
+        st.markdown(
+            '<div class="caption">Use these actions to decide how much time to invest before submitting or moving on.</div>',
+            unsafe_allow_html=True,
+        )
+        render_actions(next_actions)
 
-            with gap_col:
-                st.markdown("**Resume gaps**")
-                if gaps:
-                    render_pills(gaps, "tone-gap")
-                else:
-                    st.write("Strong keyword alignment. No major tracked gaps detected.")
+    with match_tab:
+        st.subheader("Keyword Alignment")
+        st.markdown(
+            '<div class="caption">Matched keywords are requirements already reflected in your profile. Resume gaps are useful prompts for tailoring.</div>',
+            unsafe_allow_html=True,
+        )
 
-            advanced_match_col, advanced_gap_col = st.columns(2)
+        match_col, gap_col = st.columns(2)
 
-            with advanced_match_col:
-                st.markdown("**Matched advanced requirements**")
-                if matched_advanced:
-                    render_pills(matched_advanced, "tone-match")
-                else:
-                    st.write("No specialized role requirements were found in the profile summary.")
-
-            with advanced_gap_col:
-                st.markdown("**Advanced role gaps**")
-                if advanced_gaps:
-                    render_pills(advanced_gaps, "tone-gap")
-                else:
-                    st.write("No specialized advanced gaps detected from the tracked role signals.")
-
-            with st.expander("Role category signal detail"):
-                sorted_scores = sorted(category_scores.items(), key=lambda item: item[1], reverse=True)
-                for category, score in sorted_scores:
-                    st.markdown(
-                        f"""
-                        <div class="signal-row">
-                            <span>{html.escape(category)}</span>
-                            <span class="signal-score">{score}</span>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-
-        with sponsorship_tab:
-            st.subheader("Sponsorship Signal")
-            st.markdown(
-                '<div class="caption">This reads the posting for language that may indicate sponsorship support or restrictions. Confirm directly with the employer before relying on it.</div>',
-                unsafe_allow_html=True,
-            )
-            render_card(
-                "Detected Risk Level",
-                sponsorship_risk,
-                risk_note(sponsorship_risk),
-                status_tone(sponsorship_risk),
-            )
-
-            st.markdown("**Detected signal terms**")
-            if risk_matches:
-                render_pills(risk_matches, "tone-risk")
+        with match_col:
+            st.markdown("**Matched keywords**")
+            if matched_keywords:
+                render_pills(matched_keywords, "tone-match")
             else:
-                st.write("No clear sponsorship terms were detected.")
+                st.write("No tracked keywords from the job description were found in the profile summary.")
 
-        with actions_tab:
-            st.subheader("Recommended Outreach")
-            st.markdown(
-                '<div class="caption">A concise note you can adapt for alumni, recruiters, or team members before applying.</div>',
-                unsafe_allow_html=True,
+        with gap_col:
+            st.markdown("**Resume gaps**")
+            if gaps:
+                render_pills(gaps, "tone-gap")
+            else:
+                st.write("Strong keyword alignment. No major tracked gaps detected.")
+
+        advanced_match_col, advanced_gap_col = st.columns(2)
+
+        with advanced_match_col:
+            st.markdown("**Matched advanced requirements**")
+            if matched_advanced:
+                render_pills(matched_advanced, "tone-match")
+            else:
+                st.write("No specialized role requirements were found in the profile summary.")
+
+        with advanced_gap_col:
+            st.markdown("**Advanced role gaps**")
+            if advanced_gaps:
+                render_pills(advanced_gaps, "tone-gap")
+            else:
+                st.write("No specialized advanced gaps detected from the tracked role signals.")
+
+        with st.expander("Role category signal detail"):
+            sorted_scores = sorted(category_scores.items(), key=lambda item: item[1], reverse=True)
+            for category, score in sorted_scores:
+                st.markdown(
+                    f"""
+                    <div class="signal-row">
+                        <span>{html.escape(category)}</span>
+                        <span class="signal-score">{score}</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+    with sponsorship_tab:
+        st.subheader("Sponsorship Signal")
+        st.markdown(
+            '<div class="caption">This reads the posting for language that may indicate sponsorship support or restrictions. Confirm directly with the employer before relying on it.</div>',
+            unsafe_allow_html=True,
+        )
+        render_card(
+            "Detected Risk Level",
+            sponsorship_risk,
+            risk_note(sponsorship_risk),
+            status_tone(sponsorship_risk),
+        )
+
+        st.markdown("**Detected signal terms**")
+        if risk_matches:
+            render_pills(risk_matches, "tone-risk")
+        else:
+            st.write("No clear sponsorship terms were detected.")
+
+    with actions_tab:
+        st.subheader("Recommended Outreach")
+        st.markdown(
+            '<div class="caption">A concise note you can adapt for alumni, recruiters, or team members before applying.</div>',
+            unsafe_allow_html=True,
+        )
+        st.info(outreach)
+
+        st.subheader("Priority Actions")
+        render_actions(next_actions)
+
+    with tracker_tab:
+        st.subheader("Job Tracker")
+        st.markdown(
+            '<div class="caption">Session-based tracker for roles you have analyzed. Download a CSV before closing the app if you want to keep it.</div>',
+            unsafe_allow_html=True,
+        )
+
+        if st.button("Add to Job Tracker", type="primary", use_container_width=True):
+            priority = tracker_priority(decision, fit_score)
+            status = tracker_status(decision)
+            st.session_state.job_tracker.append(
+                {
+                    "Date Added": date.today().isoformat(),
+                    "Company Name": analysis_result["company_name"],
+                    "Role Title": analysis_result["role_title"],
+                    "Location": analysis_result["location"],
+                    "Job Link": analysis_result["job_link"],
+                    "Salary Range": analysis_result["salary_range"],
+                    "Role Classification": function,
+                    "Resume Fit Score": fit_score,
+                    "Sponsorship Risk": sponsorship_risk,
+                    "Application Decision": decision,
+                    "Priority": priority,
+                    "Status": status,
+                    "Notes": decision_note(decision),
+                }
             )
-            st.info(outreach)
+            st.success("Added this role to the Job Tracker.")
 
-            st.subheader("Priority Actions")
-            render_actions(next_actions)
+        tracked_jobs = st.session_state.job_tracker
+        if tracked_jobs:
+            total_roles = len(tracked_jobs)
+            high_priority = sum(1 for row in tracked_jobs if row["Priority"] == "High")
+            apply_roles = sum(
+                1
+                for row in tracked_jobs
+                if row["Application Decision"] in ["Apply Now", "Apply + Network"]
+            )
+            skip_roles = sum(1 for row in tracked_jobs if row["Application Decision"] == "Skip")
+
+            metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
+            metric_col1.metric("Total Roles", total_roles)
+            metric_col2.metric("High Priority", high_priority)
+            metric_col3.metric("Apply Roles", apply_roles)
+            metric_col4.metric("Skip Roles", skip_roles)
+
+            st.dataframe(tracked_jobs, use_container_width=True, hide_index=True)
+
+            csv_data = tracker_rows_to_csv(tracked_jobs)
+            download_col, clear_col = st.columns([0.62, 0.38])
+            with download_col:
+                st.download_button(
+                    "Download CSV",
+                    data=csv_data,
+                    file_name="visafit_job_tracker.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                )
+            with clear_col:
+                confirm_clear = st.checkbox("Confirm clear tracker")
+                if st.button(
+                    "Clear Tracker",
+                    disabled=not confirm_clear,
+                    use_container_width=True,
+                ):
+                    st.session_state.job_tracker = []
+                    st.warning("Tracker cleared for this session.")
+        else:
+            st.info("No jobs tracked yet. Analyze a role and click Add to Job Tracker.")
+else:
+    st.divider()
+    overview_tab, match_tab, sponsorship_tab, actions_tab, tracker_tab = st.tabs(
+        ["Overview", "Match Analysis", "Sponsorship", "Outreach & Actions", "Job Tracker"]
+    )
+
+    with overview_tab:
+        st.info("Analyze a job first to see the executive fit dashboard.")
+
+    with match_tab:
+        st.info("Analyze a job first to see keyword alignment and resume gaps.")
+
+    with sponsorship_tab:
+        st.info("Analyze a job first to see sponsorship signal detail.")
+
+    with actions_tab:
+        st.info("Analyze a job first to see outreach and recommended actions.")
+
+    with tracker_tab:
+        st.subheader("Job Tracker")
+        st.markdown(
+            '<div class="caption">Session-based tracker for analyzed roles. The table and CSV download appear after you add your first role.</div>',
+            unsafe_allow_html=True,
+        )
+        st.info("Analyze a job first, then add it to your tracker.")
