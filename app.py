@@ -1113,6 +1113,198 @@ HARD_AUTHORIZATION_BLOCKERS = [
     "must be authorized to work in the us without sponsorship",
 ]
 
+TARGET_MARKETS = [
+    "USA",
+    "Singapore",
+    "Dubai / UAE",
+    "London / UK",
+    "Netherlands",
+    "Ireland",
+    "Japan",
+    "Saudi Arabia",
+    "Australia",
+]
+
+MARKET_SPONSORSHIP_SIGNALS = {
+    "USA": {
+        "context": "US H-1B, OPT, CPT, STEM OPT, and work authorization signals.",
+        "explicit_support": [
+            "visa sponsorship available",
+            "work authorization support",
+            "h-1b sponsorship",
+            "h1b sponsorship",
+            "stem opt sponsorship",
+        ],
+        "possibly_friendly": [
+            "h-1b",
+            "h1b",
+            "opt",
+            "stem opt",
+            "cpt",
+        ],
+        "hard_blockers": [
+            "u.s. citizenship required",
+            "us citizenship required",
+            "u.s. citizen required",
+            "us citizen required",
+            "security clearance required",
+            "no sponsorship",
+            "will not sponsor",
+            "must be authorized to work without sponsorship",
+        ],
+    },
+    "Singapore": {
+        "context": "Singapore Employment Pass, S Pass, and local work authorization signals.",
+        "explicit_support": [
+            "employment pass",
+            "ep sponsorship",
+            "work pass sponsorship",
+            "s pass",
+            "open to foreign applicants",
+        ],
+        "possibly_friendly": [
+            "foreign professionals",
+        ],
+        "hard_blockers": [
+            "singaporeans only",
+            "singapore pr only",
+            "citizens or permanent residents only",
+            "must have existing work authorization in singapore",
+        ],
+    },
+    "Dubai / UAE": {
+        "context": "UAE employment visa, residence visa, work permit, and employer sponsorship signals.",
+        "explicit_support": [
+            "employment visa",
+            "work permit",
+            "residence visa",
+            "visa sponsorship",
+            "employer-sponsored visa",
+            "company will sponsor visa",
+            "uae work authorization support",
+        ],
+        "possibly_friendly": [],
+        "hard_blockers": [
+            "uae nationals only",
+            "emiratis only",
+            "must already have uae work authorization",
+            "no visa sponsorship",
+        ],
+    },
+    "London / UK": {
+        "context": "UK Skilled Worker, licensed sponsor, Certificate of Sponsorship, and right-to-work signals.",
+        "explicit_support": [
+            "skilled worker visa",
+            "visa sponsorship",
+            "licensed sponsor",
+            "certificate of sponsorship",
+            "sponsorship licence",
+        ],
+        "possibly_friendly": [
+            "graduate visa",
+        ],
+        "hard_blockers": [
+            "must have right to work in the uk",
+            "no visa sponsorship",
+            "cannot sponsor",
+            "uk citizens only",
+            "security clearance required",
+        ],
+    },
+    "Netherlands": {
+        "context": "Dutch Highly Skilled Migrant, recognized sponsor, IND sponsor, EU Blue Card, and residence permit signals.",
+        "explicit_support": [
+            "highly skilled migrant",
+            "recognized sponsor",
+            "recognised sponsor",
+            "ind sponsor",
+            "eu blue card",
+            "residence permit sponsorship",
+        ],
+        "possibly_friendly": [],
+        "hard_blockers": [
+            "must already have right to work in the netherlands",
+            "eu citizens only",
+            "no sponsorship",
+        ],
+        "role_requirement_notes": [
+            "dutch speakers only",
+        ],
+    },
+    "Ireland": {
+        "context": "Irish Critical Skills Employment Permit, General Employment Permit, Stamp 1, and visa sponsorship signals.",
+        "explicit_support": [
+            "critical skills employment permit",
+            "general employment permit",
+            "employment permit sponsorship",
+            "stamp 1",
+            "visa sponsorship",
+        ],
+        "possibly_friendly": [],
+        "hard_blockers": [
+            "must have right to work in ireland",
+            "no sponsorship",
+            "eu citizens only",
+        ],
+    },
+    "Japan": {
+        "context": "Japan Highly Skilled Professional visa, Certificate of Eligibility, COE, and work visa sponsorship signals.",
+        "explicit_support": [
+            "highly skilled professional visa",
+            "certificate of eligibility",
+            "work visa sponsorship",
+            "visa sponsorship",
+            "engineer/specialist in humanities/international services",
+        ],
+        "possibly_friendly": [
+            "coe",
+        ],
+        "hard_blockers": [
+            "must already have valid work visa",
+            "japanese citizens only",
+            "no visa sponsorship",
+        ],
+    },
+    "Saudi Arabia": {
+        "context": "Saudi employment visa, work visa, Iqama, sponsor, and employer sponsorship signals.",
+        "explicit_support": [
+            "employment visa",
+            "work visa",
+            "iqama",
+            "saudi sponsor",
+            "visa sponsorship",
+            "employer sponsorship",
+            "company sponsorship",
+        ],
+        "possibly_friendly": [],
+        "hard_blockers": [
+            "saudi nationals only",
+            "must already have saudi work authorization",
+            "no visa sponsorship",
+        ],
+    },
+    "Australia": {
+        "context": "Australian Skills in Demand, subclass 482, TSS, and employer sponsorship signals.",
+        "explicit_support": [
+            "skills in demand visa",
+            "subclass 482",
+            "employer sponsored",
+            "employer sponsorship",
+            "visa sponsorship",
+            "temporary skill shortage",
+        ],
+        "possibly_friendly": [
+            "tss",
+        ],
+        "hard_blockers": [
+            "must have full working rights in australia",
+            "australian citizens only",
+            "permanent residents only",
+            "no sponsorship",
+        ],
+    },
+}
+
 ENTRY_LEVEL_TERMS = [
     "analyst",
     "junior analyst",
@@ -1172,12 +1364,23 @@ def find_canonical_terms(text, requirement_map):
     return matches
 
 
-def authorization_hard_blockers(job_text):
-    return find_terms(job_text, HARD_AUTHORIZATION_BLOCKERS)
+def market_signal_config(target_market):
+    return MARKET_SPONSORSHIP_SIGNALS.get(target_market, MARKET_SPONSORSHIP_SIGNALS["USA"])
 
 
-def has_hard_authorization_blocker(risk_matches):
-    return any(match in HARD_AUTHORIZATION_BLOCKERS for match in risk_matches)
+def market_hard_authorization_blockers(target_market):
+    blockers = list(HARD_AUTHORIZATION_BLOCKERS)
+    blockers.extend(market_signal_config(target_market).get("hard_blockers", []))
+    return sorted(set(blockers))
+
+
+def authorization_hard_blockers(job_text, target_market="USA"):
+    return find_terms(job_text, market_hard_authorization_blockers(target_market))
+
+
+def has_hard_authorization_blocker(risk_matches, target_market="USA"):
+    blockers = market_hard_authorization_blockers(target_market)
+    return any(match in blockers for match in risk_matches)
 
 
 def role_requirement_map(function):
@@ -1208,7 +1411,8 @@ def detect_seniority(job_text):
     return "Not specified", []
 
 
-def detect_sponsorship_risk(job_text):
+def detect_sponsorship_risk(job_text, target_market="USA"):
+    market_config = market_signal_config(target_market)
     explicit_support_terms = [
         "visa sponsorship available",
         "sponsorship available",
@@ -1224,8 +1428,9 @@ def detect_sponsorship_risk(job_text):
         "work authorization support",
         "requiring current or future work authorization support are welcome",
     ]
+    explicit_support_terms.extend(market_config.get("explicit_support", []))
 
-    likely_no_terms = HARD_AUTHORIZATION_BLOCKERS + [
+    likely_no_terms = market_hard_authorization_blockers(target_market) + [
         "no sponsorship",
         "will not sponsor",
         "will not provide sponsorship",
@@ -1262,10 +1467,11 @@ def detect_sponsorship_risk(job_text):
         "e-verify",
         "stem opt",
     ]
+    possibly_friendly_terms.extend(market_config.get("possibly_friendly", []))
 
-    explicit_matches = find_terms(job_text, explicit_support_terms)
+    explicit_matches = sorted(set(find_terms(job_text, explicit_support_terms)))
     likely_no_matches = sorted(set(find_terms(job_text, likely_no_terms)))
-    possible_matches = find_terms(job_text, possibly_friendly_terms)
+    possible_matches = sorted(set(find_terms(job_text, possibly_friendly_terms)))
 
     if likely_no_matches:
         return "Likely No", likely_no_matches
@@ -1277,6 +1483,11 @@ def detect_sponsorship_risk(job_text):
         return "Possibly Friendly", possible_matches
 
     return "Unclear", []
+
+
+def detect_market_requirement_notes(job_text, target_market):
+    note_terms = market_signal_config(target_market).get("role_requirement_notes", [])
+    return find_terms(job_text, note_terms)
 
 
 def classify_function(job_text):
@@ -1529,8 +1740,8 @@ def calculate_fit_score(job_text, profile_text, function="General Business / Unk
     return round(min(score, 10.0), 1), matched, gaps, matched_advanced, advanced_gaps
 
 
-def generate_decision(fit_score, sponsorship_risk, risk_matches=None):
-    hard_blocker = has_hard_authorization_blocker(risk_matches or [])
+def generate_decision(fit_score, sponsorship_risk, risk_matches=None, target_market="USA"):
+    hard_blocker = has_hard_authorization_blocker(risk_matches or [], target_market)
     if hard_blocker:
         return "Skip"
 
@@ -1575,12 +1786,12 @@ def fit_summary(fit_score):
     return "Weak match"
 
 
-def risk_note(risk):
+def risk_note(risk, target_market="USA"):
     notes = {
-        "Explicitly Supports": "The posting contains direct sponsorship or work authorization support language.",
-        "Possibly Friendly": "The posting mentions OPT, CPT, H-1B, or work authorization, but does not clearly promise sponsorship.",
-        "Unclear": "No clear sponsorship signal was found. Verify through networking or recruiter outreach.",
-        "Likely No": "The posting includes restrictive language that often blocks candidates needing sponsorship.",
+        "Explicitly Supports": f"The posting contains direct sponsorship or work authorization support language for {target_market}.",
+        "Possibly Friendly": f"The posting mentions {target_market} visa, sponsorship, or work authorization terms, but does not clearly promise support.",
+        "Unclear": f"No clear {target_market} sponsorship signal was found. Verify through networking or recruiter outreach.",
+        "Likely No": f"The posting includes restrictive {target_market} language that often blocks candidates needing sponsorship.",
     }
     return notes[risk]
 
@@ -1595,14 +1806,15 @@ def decision_note(decision):
     return notes[decision]
 
 
-def hard_blocker_note(risk_matches):
-    blocker_matches = [match for match in risk_matches if match in HARD_AUTHORIZATION_BLOCKERS]
+def hard_blocker_note(risk_matches, target_market="USA"):
+    market_blockers = market_hard_authorization_blockers(target_market)
+    blocker_matches = [match for match in risk_matches if match in market_blockers]
     if not blocker_matches:
         return ""
     if any("clearance" in match for match in blocker_matches):
         blocker_type = "security clearance"
     elif any("citizen" in match or "citizenship" in match for match in blocker_matches):
-        blocker_type = "U.S. citizenship"
+        blocker_type = f"citizenship or permanent residence restriction for {target_market}"
     else:
         blocker_type = blocker_matches[0]
     return (
@@ -1629,16 +1841,26 @@ def generate_why_decision(
     risk_matches,
     seniority,
     seniority_matches,
+    target_market,
+    market_requirement_notes=None,
 ):
     reasons = [
+        f"Target market selected: {target_market}. Sponsorship analysis used {market_signal_config(target_market)['context']}",
         f"The resume fit score is {fit_score}/10, reflecting weighted core, secondary, and advanced requirement coverage rather than simple keyword overlap.",
-        f"Sponsorship risk is marked as {sponsorship_risk}: {risk_note(sponsorship_risk)}",
+        f"Sponsorship risk is marked as {sponsorship_risk}: {risk_note(sponsorship_risk, target_market)}",
         f"The recommended decision is {decision}: {decision_note(decision)}",
     ]
 
-    blocker_note = hard_blocker_note(risk_matches)
+    blocker_note = hard_blocker_note(risk_matches, target_market)
     if blocker_note:
-        reasons.insert(1, blocker_note)
+        reasons.insert(2, blocker_note)
+
+    if market_requirement_notes:
+        reasons.append(
+            "Market-specific role requirement note: "
+            + ", ".join(market_requirement_notes[:3])
+            + " was detected, but it is not treated as a visa sponsorship blocker."
+        )
 
     if seniority != "Not specified":
         seniority_signal = ", ".join(seniority_matches[:3]) if seniority_matches else "role language"
@@ -1790,6 +2012,7 @@ def tracker_rows_to_csv(rows):
         "Location",
         "Job Link",
         "Salary Range",
+        "Target Market",
         "Role Classification",
         "Resume Fit Score",
         "Sponsorship Risk",
@@ -1873,7 +2096,7 @@ with st.sidebar:
         <div class="sidebar-section-title">How to use</div>
         <div class="sidebar-workflow">
             <div class="sidebar-step"><span class="sidebar-step-number">1</span><span>Paste job description</span></div>
-            <div class="sidebar-step"><span class="sidebar-step-number">2</span><span>Review profile summary</span></div>
+            <div class="sidebar-step"><span class="sidebar-step-number">2</span><span>Choose target market</span></div>
             <div class="sidebar-step"><span class="sidebar-step-number">3</span><span>Run analysis</span></div>
             <div class="sidebar-step"><span class="sidebar-step-number">4</span><span>Apply / network / skip based on output</span></div>
         </div>
@@ -1935,6 +2158,10 @@ with st.sidebar:
             "Sponsorship results are inferred from job-description language. Confirm details "
             "with the employer before making application or immigration decisions."
         )
+        st.markdown(
+            "Global sponsorship logic is directional and should be verified with the employer "
+            "or official immigration sources."
+        )
 
     st.markdown(
         '<div class="sidebar-disclaimer">Career guidance only &mdash; not legal or immigration advice.</div>',
@@ -1957,6 +2184,9 @@ if "job_description" not in st.session_state:
 if "profile_summary" not in st.session_state:
     st.session_state.profile_summary = DEFAULT_PROFILE
 
+if "target_market" not in st.session_state:
+    st.session_state.target_market = "USA"
+
 if "job_tracker" not in st.session_state:
     st.session_state.job_tracker = []
 
@@ -1967,10 +2197,10 @@ st.markdown(
     """
     <div class="hero">
         <h1>VisaFit AI</h1>
-        <p>Prioritize job applications with a simple read on resume fit, sponsorship signal, role type, and next steps.</p>
+        <p>Prioritize job applications with a market-aware read on resume fit, sponsorship signal, role type, and next steps.</p>
         <div class="hero-stats">
             <span class="hero-chip">Resume fit</span>
-            <span class="hero-chip">Sponsorship signal</span>
+            <span class="hero-chip">Global sponsorship signal</span>
             <span class="hero-chip">Role classification</span>
             <span class="hero-chip">Outreach actions</span>
         </div>
@@ -1983,7 +2213,7 @@ top_col1, top_col2 = st.columns([0.72, 0.28])
 
 with top_col1:
     st.markdown(
-        '<div class="top-action-row"><div class="small-muted">Paste a JD, compare it with your profile, and get a practical recommendation for where to spend time.</div></div>',
+        '<div class="top-action-row"><div class="small-muted">Choose the target market, paste a JD, compare it with your profile, and get a practical recommendation for where to spend time.</div></div>',
         unsafe_allow_html=True,
     )
 
@@ -1994,13 +2224,20 @@ with top_col2:
 input_col, profile_col = st.columns(2)
 
 with input_col:
+    target_market = st.selectbox(
+        "Target Market",
+        TARGET_MARKETS,
+        index=TARGET_MARKETS.index(st.session_state.target_market),
+        key="target_market",
+        help="Choose the market where the role is based before analyzing sponsorship language.",
+    )
     job_description = st.text_area(
         "Job Description",
         key="job_description",
         height=330,
-        placeholder="Paste the full job description here, including qualifications and work authorization language.",
+        placeholder="Choose the correct target market above, then paste the full job description including qualifications and work authorization language.",
     )
-    st.caption("Include qualifications and work authorization language for the strongest signal.")
+    st.caption("Choose the right target market before analysis, then include qualifications and work authorization language for the strongest signal.")
 
 with profile_col:
     profile_summary = st.text_area(
@@ -2048,9 +2285,10 @@ analyze = st.button("Analyze Job", type="primary", use_container_width=True)
 
 if analyze:
     if not job_description.strip():
-        st.warning("Please paste a job description or load the sample job first.")
+        st.warning("Please choose the target market, then paste a job description or load the sample job first.")
     else:
-        sponsorship_risk, risk_matches = detect_sponsorship_risk(job_description)
+        sponsorship_risk, risk_matches = detect_sponsorship_risk(job_description, target_market)
+        market_requirement_notes = detect_market_requirement_notes(job_description, target_market)
         function, category_scores = classify_function(job_description)
         seniority, seniority_matches = detect_seniority(job_description)
         keywords = extract_keywords(job_description)
@@ -2061,7 +2299,7 @@ if analyze:
             seniority,
             seniority_matches,
         )
-        decision = generate_decision(fit_score, sponsorship_risk, risk_matches)
+        decision = generate_decision(fit_score, sponsorship_risk, risk_matches, target_market)
         outreach = generate_outreach(function)
         why_decision = generate_why_decision(
             fit_score,
@@ -2073,6 +2311,8 @@ if analyze:
             risk_matches,
             seniority,
             seniority_matches,
+            target_market,
+            market_requirement_notes,
         )
         next_actions = generate_next_actions(decision, sponsorship_risk, gaps, function)
         st.session_state.analysis_result = {
@@ -2081,8 +2321,10 @@ if analyze:
             "location": location.strip(),
             "job_link": job_link.strip(),
             "salary_range": salary_range.strip(),
+            "target_market": target_market,
             "sponsorship_risk": sponsorship_risk,
             "risk_matches": risk_matches,
+            "market_requirement_notes": market_requirement_notes,
             "function": function,
             "category_scores": category_scores,
             "seniority": seniority,
@@ -2102,8 +2344,10 @@ if analyze:
 analysis_result = st.session_state.analysis_result
 
 if analysis_result:
+    target_market = analysis_result.get("target_market", "USA")
     sponsorship_risk = analysis_result["sponsorship_risk"]
     risk_matches = analysis_result["risk_matches"]
+    market_requirement_notes = analysis_result.get("market_requirement_notes", [])
     function = analysis_result["function"]
     category_scores = analysis_result["category_scores"]
     seniority = analysis_result["seniority"]
@@ -2137,7 +2381,7 @@ if analysis_result:
         render_card(
             "Sponsorship Risk",
             sponsorship_risk,
-            risk_note(sponsorship_risk),
+            risk_note(sponsorship_risk, target_market),
             status_tone(sponsorship_risk),
         )
 
@@ -2238,15 +2482,23 @@ if analysis_result:
         render_card(
             "Detected Risk Level",
             sponsorship_risk,
-            risk_note(sponsorship_risk),
+            risk_note(sponsorship_risk, target_market),
             status_tone(sponsorship_risk),
         )
+
+        st.markdown("**Target market**")
+        st.write(f"{target_market}: {market_signal_config(target_market)['context']}")
 
         st.markdown("**Detected signal terms**")
         if risk_matches:
             render_pills(risk_matches, "tone-risk")
         else:
             st.write("No clear sponsorship terms were detected.")
+
+        if market_requirement_notes:
+            st.markdown("**Market-specific role requirement note**")
+            render_pills(market_requirement_notes, "tone-gap")
+            st.caption("These terms may affect role fit but are not treated as visa sponsorship blockers.")
 
     with actions_tab:
         st.subheader("Recommended Outreach")
@@ -2277,6 +2529,7 @@ if analysis_result:
                     "Location": analysis_result["location"],
                     "Job Link": analysis_result["job_link"],
                     "Salary Range": analysis_result["salary_range"],
+                    "Target Market": target_market,
                     "Role Classification": function,
                     "Resume Fit Score": fit_score,
                     "Sponsorship Risk": sponsorship_risk,
