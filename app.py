@@ -46,12 +46,12 @@ st.markdown(
         max-width: 1120px;
     }
     [data-testid="stSidebar"] {
-        background: #fbfdff;
+        background: #ffffff;
         border-right: 1px solid #e7edf5;
         box-shadow: inset -1px 0 0 rgba(148, 163, 184, 0.08);
     }
     [data-testid="stSidebar"] > div:first-child {
-        padding-top: 1.35rem;
+        padding-top: 1.2rem;
     }
     [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
         color: #64748b;
@@ -74,6 +74,174 @@ st.markdown(
         border-radius: 8px;
         border: 1px solid #fde68a;
         background: #fffbeb;
+    }
+    [data-testid="stSidebar"] details {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.035);
+        margin-bottom: 0.55rem;
+    }
+    [data-testid="stSidebar"] details summary p {
+        color: #1e293b;
+        font-weight: 750;
+        font-size: 0.9rem;
+    }
+    [data-testid="stSidebar"] details [data-testid="stMarkdownContainer"] {
+        color: #475569;
+        font-size: 0.88rem;
+    }
+    .sidebar-card {
+        border: 1px solid #e1e9f3;
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.055);
+        padding: 0.95rem 1rem;
+        margin-bottom: 0.85rem;
+    }
+    .sidebar-brand-card {
+        background:
+            linear-gradient(135deg, rgba(239, 246, 255, 0.98), rgba(255, 255, 255, 0.98)),
+            #ffffff;
+        border-color: #d7e5f6;
+    }
+    .sidebar-kicker {
+        color: #1d4ed8;
+        font-size: 0.68rem;
+        font-weight: 850;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        margin-bottom: 0.35rem;
+    }
+    .sidebar-title {
+        color: #0f172a;
+        font-size: 1.22rem;
+        font-weight: 850;
+        line-height: 1.12;
+        margin-bottom: 0.18rem;
+    }
+    .sidebar-subtitle {
+        color: #334155;
+        font-size: 0.88rem;
+        font-weight: 750;
+        margin-bottom: 0.45rem;
+    }
+    .sidebar-copy {
+        color: #64748b;
+        font-size: 0.84rem;
+        line-height: 1.42;
+        margin: 0;
+    }
+    .sidebar-section-title {
+        color: #475569;
+        font-size: 0.7rem;
+        font-weight: 850;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        margin: 1rem 0 0.48rem 0;
+    }
+    .sidebar-workflow {
+        display: grid;
+        gap: 0.42rem;
+        margin-bottom: 0.9rem;
+    }
+    .sidebar-step {
+        display: grid;
+        grid-template-columns: 1.45rem 1fr;
+        align-items: center;
+        gap: 0.52rem;
+        color: #334155;
+        font-size: 0.86rem;
+        line-height: 1.28;
+    }
+    .sidebar-step-number {
+        width: 1.45rem;
+        height: 1.45rem;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+        font-size: 0.78rem;
+        font-weight: 850;
+    }
+    .sidebar-legend {
+        display: grid;
+        gap: 0.44rem;
+        margin-bottom: 0.9rem;
+    }
+    .sidebar-pill {
+        display: inline-flex;
+        align-items: center;
+        width: 100%;
+        box-sizing: border-box;
+        border-radius: 999px;
+        border: 1px solid var(--legend-border, #e2e8f0);
+        background: var(--legend-bg, #f8fafc);
+        color: var(--legend-color, #334155);
+        font-size: 0.8rem;
+        font-weight: 750;
+        line-height: 1.15;
+        padding: 0.42rem 0.62rem;
+    }
+    .legend-green {
+        --legend-bg: #ecfdf5;
+        --legend-border: #bbf7d0;
+        --legend-color: #166534;
+    }
+    .legend-blue {
+        --legend-bg: #eff6ff;
+        --legend-border: #bfdbfe;
+        --legend-color: #1d4ed8;
+    }
+    .legend-amber {
+        --legend-bg: #fffbeb;
+        --legend-border: #fde68a;
+        --legend-color: #92400e;
+    }
+    .legend-yellow {
+        --legend-bg: #fefce8;
+        --legend-border: #fde047;
+        --legend-color: #854d0e;
+    }
+    .legend-gray {
+        --legend-bg: #f8fafc;
+        --legend-border: #cbd5e1;
+        --legend-color: #475569;
+    }
+    .legend-red {
+        --legend-bg: #fef2f2;
+        --legend-border: #fecaca;
+        --legend-color: #991b1b;
+    }
+    .sidebar-disclaimer {
+        border-top: 1px solid #e2e8f0;
+        border-bottom: 1px solid #e2e8f0;
+        color: #64748b;
+        font-size: 0.78rem;
+        line-height: 1.35;
+        padding: 0.65rem 0;
+        margin: 0.85rem 0;
+    }
+    .sidebar-link {
+        display: block;
+        border: 1px solid #cbd8e7;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #1d4ed8 !important;
+        font-size: 0.84rem;
+        font-weight: 800;
+        line-height: 1.2;
+        text-align: center;
+        text-decoration: none !important;
+        padding: 0.62rem 0.7rem;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.035);
+    }
+    .sidebar-link:hover {
+        border-color: #93b4d9;
+        background: #f8fbff;
     }
     .hero {
         position: relative;
@@ -187,6 +355,7 @@ st.markdown(
     .tone-unclear { --card-accent: #94a3b8; }
     .tone-no { --card-accent: var(--vf-red); }
     .tone-apply { --card-accent: var(--vf-green); }
+    .tone-apply-network { --card-accent: var(--vf-blue); }
     .tone-network { --card-accent: var(--vf-amber); }
     .tone-skip { --card-accent: var(--vf-red); }
     .tone-role { --card-accent: var(--vf-blue); }
@@ -1517,7 +1686,7 @@ def status_tone(value):
         "Unclear": "tone-unclear",
         "Likely No": "tone-no",
         "Apply Now": "tone-apply",
-        "Apply + Network": "tone-network",
+        "Apply + Network": "tone-apply-network",
         "Network First": "tone-network",
         "Skip": "tone-skip",
     }
@@ -1562,25 +1731,94 @@ def render_actions(actions):
 # -----------------------------
 
 with st.sidebar:
-    st.title("VisaFit AI")
-    st.caption("Executive job-fit dashboard")
-
-    st.subheader("Focus")
-    st.write(
-        "International MBA students and early-career professionals deciding which roles "
-        "deserve an application, a networking push, or a quick pass."
+    st.markdown(
+        """
+        <div class="sidebar-card sidebar-brand-card">
+            <div class="sidebar-kicker">VisaFit AI</div>
+            <div class="sidebar-title">Career Decision Dashboard</div>
+            <div class="sidebar-subtitle">Job-fit and sponsorship signal review</div>
+            <p class="sidebar-copy">Prioritize roles with a clear apply, network, or skip recommendation.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    st.subheader("Workflow")
-    st.write(
-        "Paste a job description, review or edit the profile summary, then run the analysis. "
-        "Use the decision, gaps, and next actions to prioritize your search queue."
+    st.markdown(
+        """
+        <div class="sidebar-section-title">How to use</div>
+        <div class="sidebar-workflow">
+            <div class="sidebar-step"><span class="sidebar-step-number">1</span><span>Paste job description</span></div>
+            <div class="sidebar-step"><span class="sidebar-step-number">2</span><span>Review profile summary</span></div>
+            <div class="sidebar-step"><span class="sidebar-step-number">3</span><span>Run analysis</span></div>
+            <div class="sidebar-step"><span class="sidebar-step-number">4</span><span>Apply / network / skip based on output</span></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    st.subheader("Disclaimer")
-    st.warning(
-        "This is career guidance, not legal or immigration advice. Confirm work authorization "
-        "questions with qualified professionals or the employer."
+    st.markdown(
+        """
+        <div class="sidebar-section-title">Decision Legend</div>
+        <div class="sidebar-legend">
+            <span class="sidebar-pill legend-green">Apply Now</span>
+            <span class="sidebar-pill legend-blue">Apply + Network</span>
+            <span class="sidebar-pill legend-amber">Network First</span>
+            <span class="sidebar-pill legend-red">Skip</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div class="sidebar-section-title">Sponsorship Legend</div>
+        <div class="sidebar-legend">
+            <span class="sidebar-pill legend-green">Explicitly Supports</span>
+            <span class="sidebar-pill legend-yellow">Possibly Friendly</span>
+            <span class="sidebar-pill legend-gray">Unclear</span>
+            <span class="sidebar-pill legend-red">Likely No</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    with st.expander("What this app checks"):
+        st.markdown(
+            """
+            - Resume and skill alignment
+            - Sponsorship language and risk
+            - Role category and fit signals
+            - Match strengths, gaps, and next actions
+            """
+        )
+
+    with st.expander("Best for these roles"):
+        st.markdown(
+            """
+            - Investment Banking
+            - Strategic Finance / FP&A
+            - Corporate Strategy
+            - Corporate Development
+            - Business Analyst
+            - Venture Capital
+            - Private Equity
+            """
+        )
+
+    with st.expander("Sponsorship note"):
+        st.markdown(
+            "Sponsorship results are inferred from job-description language. Confirm details "
+            "with the employer before making application or immigration decisions."
+        )
+
+    st.markdown(
+        '<div class="sidebar-disclaimer">Career guidance only &mdash; not legal or immigration advice.</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<a class="sidebar-link" href="https://github.com/nehatiwari5406-stack/visafit-ai" target="_blank" rel="noopener noreferrer">View GitHub repo</a>',
+        unsafe_allow_html=True,
     )
 
 
