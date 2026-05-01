@@ -477,11 +477,20 @@ st.markdown(
     div[data-testid="stButton"] button[kind="primary"] {
         background: linear-gradient(135deg, #1d4ed8, #047857);
         border: 1px solid rgba(29, 78, 216, 0.85);
+        color: #ffffff !important;
         box-shadow: 0 8px 18px rgba(29, 78, 216, 0.16);
+    }
+    div[data-testid="stButton"] button[kind="primary"] p {
+        color: #ffffff !important;
     }
     div[data-testid="stButton"] button[kind="primary"]:hover {
         background: linear-gradient(135deg, #1e40af, #03685f);
         border-color: #1e40af;
+        color: #ffffff !important;
+        box-shadow: 0 10px 22px rgba(30, 64, 175, 0.22);
+    }
+    div[data-testid="stButton"] button[kind="primary"]:hover p {
+        color: #ffffff !important;
     }
     div[data-testid="stButton"] button[kind="secondary"] {
         border-color: #cbd8e7;
