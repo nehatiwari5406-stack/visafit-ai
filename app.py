@@ -377,21 +377,27 @@ experience supporting OPT, CPT, and H-1B sponsorship for selected roles.
 
 ROLE_CATEGORIES = {
     "Investment Banking": [
-        "investment banking",
-        "m&a",
-        "mergers",
-        "acquisitions",
-        "valuation",
+        "investment banking analyst",
+        "investment banking associate",
         "pitchbook",
-        "financial modeling",
+        "cim",
+        "confidential information memorandum",
         "deal execution",
+        "transaction execution",
+        "sell-side advisory",
+        "buy-side advisory",
+        "capital raising",
+        "fairness opinion",
+        "client transactions",
     ],
     "Corporate Development": [
         "corporate development",
         "strategic acquisitions",
         "m&a strategy",
+        "divestitures",
         "partnerships",
         "due diligence",
+        "venture investments",
         "integration planning",
     ],
     "Strategic Finance / FP&A": [
@@ -413,9 +419,21 @@ ROLE_CATEGORIES = {
     ],
     "Corporate Strategy": [
         "corporate strategy",
+        "strategic planning",
+        "annual strategic planning",
+        "enterprise risk management",
         "growth strategy",
         "market strategy",
         "strategic initiatives",
+        "competitive intelligence",
+        "business continuity planning",
+        "executive team",
+        "excom",
+        "board of directors",
+        "5-year strategic plan",
+        "5 year strategic plan",
+        "capex plan",
+        "capex planning",
         "new market",
         "competitive analysis",
     ],
@@ -443,6 +461,81 @@ ROLE_CATEGORIES = {
         "go-to-market",
     ],
 }
+
+INVESTMENT_BANKING_ANCHOR_TERMS = [
+    "investment banking analyst",
+    "investment banking analysts",
+    "investment banking associate",
+    "investment banking associates",
+    "ib analyst",
+    "ib analysts",
+    "ib associate",
+    "ib associates",
+    "deal execution",
+    "transaction execution",
+    "sell-side advisory",
+    "buy-side advisory",
+    "capital raising",
+    "pitchbook",
+    "cim",
+    "confidential information memorandum",
+    "fairness opinion",
+    "client transactions",
+]
+
+CORPORATE_DEVELOPMENT_ANCHOR_TERMS = [
+    "corporate development",
+    "corp dev",
+    "strategic acquisitions",
+    "m&a strategy",
+    "divestitures",
+    "due diligence",
+    "venture investments",
+    "integration",
+    "integration planning",
+]
+
+CORPORATE_STRATEGY_ANCHOR_TERMS = [
+    "corporate strategy",
+    "strategic planning",
+    "annual strategic planning",
+    "enterprise risk management",
+    "growth strategy",
+    "market strategy",
+    "strategic initiatives",
+    "competitive intelligence",
+    "business continuity planning",
+    "executive team",
+    "excom",
+    "board of directors",
+    "5-year strategic plan",
+    "5 year strategic plan",
+    "capex plan",
+    "capex planning",
+]
+
+TRANSFERABLE_DEAL_FINANCE_TERMS = [
+    "banking",
+    "m&a",
+    "mergers",
+    "acquisitions",
+    "financial modeling",
+    "npv",
+    "irr",
+    "valuation",
+    "payback",
+]
+
+CORPORATE_DEVELOPMENT_DEAL_TERMS = [
+    "m&a",
+    "mergers",
+    "acquisitions",
+    "divestitures",
+    "due diligence",
+    "venture investments",
+    "integration",
+    "integration planning",
+]
 
 FINANCE_INTENT_TERMS = [
     "strategic finance",
@@ -683,6 +776,27 @@ def classify_function(job_text):
     for category, keywords in ROLE_CATEGORIES.items():
         scores[category] = len(find_terms(job_text, keywords))
 
+    investment_banking_anchors = find_terms(job_text, INVESTMENT_BANKING_ANCHOR_TERMS)
+    corporate_development_anchors = find_terms(job_text, CORPORATE_DEVELOPMENT_ANCHOR_TERMS)
+    corporate_strategy_anchors = find_terms(job_text, CORPORATE_STRATEGY_ANCHOR_TERMS)
+    corporate_development_deal_signals = find_terms(job_text, CORPORATE_DEVELOPMENT_DEAL_TERMS)
+
+    if corporate_development_anchors:
+        scores["Corporate Development"] += min(len(corporate_development_anchors) * 3, 9)
+
+    if corporate_development_deal_signals and not investment_banking_anchors:
+        scores["Corporate Development"] += min(len(corporate_development_deal_signals) * 2, 8)
+
+    if corporate_strategy_anchors:
+        scores["Corporate Strategy"] += min(len(corporate_strategy_anchors) * 3, 9)
+
+    if (corporate_development_anchors or corporate_strategy_anchors) and not investment_banking_anchors:
+        transferable_deal_finance_signals = find_terms(job_text, TRANSFERABLE_DEAL_FINANCE_TERMS)
+        scores["Investment Banking"] = max(
+            0,
+            scores["Investment Banking"] - len(transferable_deal_finance_signals),
+        )
+
     finance_signals = find_terms(job_text, FINANCE_INTENT_TERMS)
     analytics_tool_signals = find_terms(job_text, ANALYTICS_TOOL_TERMS)
 
@@ -696,6 +810,19 @@ def classify_function(job_text):
         )
         if scores["Business Analytics"] >= scores["Strategic Finance / FP&A"]:
             scores["Business Analytics"] = max(0, scores["Strategic Finance / FP&A"] - 1)
+
+    if corporate_strategy_anchors and not investment_banking_anchors:
+        scores["Corporate Strategy"] = max(scores["Corporate Strategy"], max(scores.values()) + 1)
+
+    if (
+        corporate_development_deal_signals
+        and not corporate_strategy_anchors
+        and not investment_banking_anchors
+    ):
+        scores["Corporate Development"] = max(
+            scores["Corporate Development"],
+            scores["Investment Banking"] + 1,
+        )
 
     best_category = max(scores, key=scores.get)
 
