@@ -396,11 +396,19 @@ ROLE_CATEGORIES = {
     ],
     "Strategic Finance / FP&A": [
         "fp&a",
+        "strategic finance",
         "financial planning",
         "forecasting",
         "budgeting",
         "variance analysis",
-        "strategic finance",
+        "financial modeling",
+        "scenario analysis",
+        "scenario testing",
+        "performance reporting",
+        "pricing",
+        "unit economics",
+        "finance leadership",
+        "financial performance management",
         "annual planning",
     ],
     "Corporate Strategy": [
@@ -444,6 +452,13 @@ FINANCE_INTENT_TERMS = [
     "budgeting",
     "variance analysis",
     "financial modeling",
+    "scenario analysis",
+    "scenario testing",
+    "performance reporting",
+    "pricing analysis",
+    "unit economics",
+    "finance leadership",
+    "financial performance management",
     "annual planning",
     "monthly forecasting",
     "revenue",
@@ -461,6 +476,7 @@ ANALYTICS_TOOL_TERMS = [
 ]
 
 TRACKED_KEYWORDS = [
+    "strategic finance",
     "financial modeling",
     "valuation",
     "fp&a",
@@ -487,6 +503,78 @@ TRACKED_KEYWORDS = [
     "executive communication",
 ]
 
+CORE_REQUIREMENT_WEIGHTS = {
+    "strategic finance": 1.5,
+    "fp&a": 1.5,
+    "financial modeling": 1.45,
+    "forecasting": 1.4,
+    "budgeting": 1.1,
+    "variance analysis": 1.1,
+    "excel": 1.0,
+    "sql": 1.0,
+    "presentation": 0.9,
+    "stakeholder management": 0.9,
+    "cross-functional": 0.8,
+    "analytics": 0.75,
+    "dashboard": 0.7,
+    "kpi": 0.7,
+    "data analysis": 0.7,
+}
+
+SECONDARY_REQUIREMENT_WEIGHTS = {
+    "valuation": 0.8,
+    "python": 0.7,
+    "tableau": 0.7,
+    "power bi": 0.7,
+    "strategy": 0.65,
+    "market research": 0.65,
+    "m&a": 0.75,
+    "investment banking": 0.75,
+    "corporate development": 0.75,
+    "executive communication": 0.7,
+}
+
+ADVANCED_REQUIREMENTS = {
+    "cohort analysis": ["cohort analysis", "cohort analyses"],
+    "3-statement modeling": [
+        "3-statement modeling",
+        "3 statement modeling",
+        "three statement modeling",
+        "three-statement modeling",
+    ],
+    "unit economics": ["unit economics"],
+    "pricing analysis": ["pricing analysis", "pricing analyses"],
+    "A/B testing": ["a/b testing", "a/b tests", "ab testing", "ab tests"],
+    "Looker": ["looker"],
+    "bottom-up forecasting": ["bottom-up forecasting", "bottom up forecasting"],
+    "product analytics": ["product analytics"],
+    "financial performance management": ["financial performance management"],
+    "fintech": ["fintech", "financial technology"],
+    "SQL": ["sql"],
+    "Excel": ["excel"],
+    "forecasting": ["forecasting"],
+    "financial modeling": ["financial modeling"],
+    "scenario analysis": ["scenario analysis", "scenario testing", "scenario planning"],
+}
+
+ADVANCED_REQUIREMENT_WEIGHTS = {
+    "cohort analysis": 1.0,
+    "3-statement modeling": 1.1,
+    "unit economics": 1.0,
+    "pricing analysis": 0.95,
+    "A/B testing": 0.95,
+    "Looker": 0.85,
+    "bottom-up forecasting": 1.0,
+    "product analytics": 0.95,
+    "financial performance management": 0.95,
+    "fintech": 0.75,
+    "SQL": 0.7,
+    "Excel": 0.65,
+    "forecasting": 0.8,
+    "financial modeling": 0.85,
+    "scenario analysis": 0.9,
+}
+
 
 # -----------------------------
 # Helper Functions
@@ -496,9 +584,26 @@ def normalize_text(text):
     return re.sub(r"\s+", " ", text.lower()).strip()
 
 
+def term_pattern(term):
+    escaped = re.escape(term.lower())
+    escaped = escaped.replace(r"\ ", r"\s+")
+    return rf"(?<![a-z0-9]){escaped}(?![a-z0-9])"
+
+
+def has_term(text, term):
+    return re.search(term_pattern(term), normalize_text(text), flags=re.IGNORECASE) is not None
+
+
 def find_terms(text, terms):
-    normalized = normalize_text(text)
-    return [term for term in terms if term in normalized]
+    return [term for term in terms if has_term(text, term)]
+
+
+def find_canonical_terms(text, requirement_map):
+    matches = []
+    for canonical, variants in requirement_map.items():
+        if any(has_term(text, variant) for variant in variants):
+            matches.append(canonical)
+    return matches
 
 
 def detect_sponsorship_risk(job_text):
@@ -509,8 +614,11 @@ def detect_sponsorship_risk(job_text):
         "h1b sponsorship",
         "will sponsor",
         "support h-1b",
+        "support h1b",
+        "support visa sponsorship",
         "supports opt",
         "supports cpt",
+        "visa sponsorship support",
         "work authorization support",
         "requiring current or future work authorization support are welcome",
     ]
@@ -518,12 +626,23 @@ def detect_sponsorship_risk(job_text):
     likely_no_terms = [
         "no sponsorship",
         "will not sponsor",
+        "will not provide sponsorship",
+        "do not sponsor",
+        "doesn't sponsor",
         "does not sponsor",
         "not sponsor",
+        "not provide sponsorship",
+        "not offer sponsorship",
         "without sponsorship",
         "sponsorship is not available",
         "must be authorized to work in the united states without sponsorship",
         "must be authorized to work in the us without sponsorship",
+        "must be authorized to work without sponsorship",
+        "must not require sponsorship",
+        "must not require visa sponsorship",
+        "unable to sponsor",
+        "cannot sponsor",
+        "cannot provide sponsorship",
         "u.s. citizen",
         "us citizen",
         "green card holder",
@@ -536,8 +655,8 @@ def detect_sponsorship_risk(job_text):
         "cpt",
         "h-1b",
         "h1b",
+        "visa sponsorship",
         "international students",
-        "work authorization",
         "e-verify",
         "stem opt",
     ]
@@ -568,13 +687,15 @@ def classify_function(job_text):
     analytics_tool_signals = find_terms(job_text, ANALYTICS_TOOL_TERMS)
 
     if finance_signals:
-        scores["Strategic Finance / FP&A"] += min(len(finance_signals), 4)
+        scores["Strategic Finance / FP&A"] += min(len(finance_signals) * 2, 10)
 
     if finance_signals and analytics_tool_signals:
         scores["Business Analytics"] = max(
             0,
-            scores["Business Analytics"] - min(len(analytics_tool_signals), 3),
+            scores["Business Analytics"] - min(len(analytics_tool_signals), 5),
         )
+        if scores["Business Analytics"] >= scores["Strategic Finance / FP&A"]:
+            scores["Business Analytics"] = max(0, scores["Strategic Finance / FP&A"] - 1)
 
     best_category = max(scores, key=scores.get)
 
@@ -588,43 +709,134 @@ def extract_keywords(job_text):
     return find_terms(job_text, TRACKED_KEYWORDS)
 
 
+def weighted_coverage(required_terms, matched_terms, weights):
+    if not required_terms:
+        return 1.0, 0, 0
+
+    total_weight = sum(weights.get(term, 1.0) for term in required_terms)
+    matched_weight = sum(weights.get(term, 1.0) for term in matched_terms)
+
+    if total_weight == 0:
+        return 1.0, matched_weight, total_weight
+
+    return matched_weight / total_weight, matched_weight, total_weight
+
+
+def cap_fit_score(score, core_coverage, secondary_coverage, advanced_terms, advanced_coverage, gaps, advanced_gaps):
+    if core_coverage < 0.65:
+        return min(score, 7.4)
+
+    if core_coverage < 0.8:
+        return min(score, 8.2)
+
+    if not advanced_terms:
+        return min(score, 8.5)
+
+    if advanced_coverage < 0.35:
+        return min(score, 8.5)
+
+    if advanced_coverage < 0.6:
+        return min(score, 8.8)
+
+    matched_advanced_count = len(advanced_terms) - len(advanced_gaps)
+    if matched_advanced_count < 3:
+        return min(score, 8.8)
+
+    meaningful_gap_count = len(gaps) + len(advanced_gaps)
+    if core_coverage >= 0.95 and secondary_coverage >= 0.85 and advanced_coverage >= 0.85 and meaningful_gap_count <= 1:
+        return min(score, 10.0)
+
+    return min(score, 9.4)
+
+
 def calculate_fit_score(job_text, profile_text):
     job_keywords = extract_keywords(job_text)
-    profile = normalize_text(profile_text)
+    core_terms = find_terms(job_text, CORE_REQUIREMENT_WEIGHTS.keys())
+    secondary_terms = find_terms(job_text, SECONDARY_REQUIREMENT_WEIGHTS.keys())
+    advanced_terms = find_canonical_terms(job_text, ADVANCED_REQUIREMENTS)
 
-    if not job_keywords:
-        return 6.0, [], []
+    if not job_keywords and not advanced_terms:
+        return 6.0, [], [], [], []
 
-    matched = [keyword for keyword in job_keywords if keyword in profile]
-    gaps = [keyword for keyword in job_keywords if keyword not in profile]
-    score = 5 + (len(matched) / len(job_keywords)) * 5
+    matched_core = [term for term in core_terms if has_term(profile_text, term)]
+    matched_secondary = [term for term in secondary_terms if has_term(profile_text, term)]
+    matched_advanced = [
+        term
+        for term in advanced_terms
+        if any(has_term(profile_text, variant) for variant in ADVANCED_REQUIREMENTS[term])
+    ]
 
-    return round(score, 1), matched, gaps
+    core_gaps = [term for term in core_terms if term not in matched_core]
+    secondary_gaps = [term for term in secondary_terms if term not in matched_secondary]
+    advanced_gaps = [term for term in advanced_terms if term not in matched_advanced]
+
+    core_coverage, _, _ = weighted_coverage(core_terms, matched_core, CORE_REQUIREMENT_WEIGHTS)
+    secondary_coverage, _, _ = weighted_coverage(
+        secondary_terms,
+        matched_secondary,
+        SECONDARY_REQUIREMENT_WEIGHTS,
+    )
+    advanced_coverage, _, _ = weighted_coverage(
+        advanced_terms,
+        matched_advanced,
+        ADVANCED_REQUIREMENT_WEIGHTS,
+    )
+
+    score = 4.0
+    score += core_coverage * 3.6 if core_terms else 1.8
+    score += secondary_coverage * 1.0 if secondary_terms else 0.5
+    score += advanced_coverage * 1.8 if advanced_terms else 0.4
+
+    if core_coverage >= 0.85 and advanced_terms and advanced_coverage >= 0.5:
+        score += 0.4
+
+    if core_coverage >= 0.95 and secondary_coverage >= 0.85 and advanced_coverage >= 0.75:
+        score += 0.3
+
+    gaps = core_gaps + secondary_gaps
+    score = cap_fit_score(
+        score,
+        core_coverage,
+        secondary_coverage,
+        advanced_terms,
+        advanced_coverage,
+        gaps,
+        advanced_gaps,
+    )
+
+    matched = matched_core + matched_secondary
+
+    return round(score, 1), matched, gaps, matched_advanced, advanced_gaps
 
 
 def generate_decision(fit_score, sponsorship_risk):
     if sponsorship_risk == "Likely No":
-        if fit_score >= 8.5:
+        if fit_score >= 9.2:
             return "Network First"
         return "Skip"
 
     if sponsorship_risk == "Explicitly Supports":
-        if fit_score >= 7:
-            return "Apply Now"
-        return "Network First"
-
-    if sponsorship_risk == "Possibly Friendly":
         if fit_score >= 8:
             return "Apply Now"
         if fit_score >= 6.5:
             return "Network First"
         return "Skip"
 
-    if fit_score >= 8.5:
-        return "Apply Now"
+    if sponsorship_risk == "Possibly Friendly":
+        if fit_score >= 8.8:
+            return "Apply Now"
+        if fit_score >= 7.8:
+            return "Apply + Network"
+        if fit_score >= 6.5:
+            return "Network First"
+        return "Skip"
 
-    if fit_score >= 6.5:
-        return "Network First"
+    if sponsorship_risk == "Unclear":
+        if fit_score >= 8:
+            return "Apply + Network"
+        if fit_score >= 6.5:
+            return "Network First"
+        return "Skip"
 
     return "Skip"
 
@@ -652,6 +864,7 @@ def risk_note(risk):
 def decision_note(decision):
     notes = {
         "Apply Now": "The role has enough fit and sponsorship signal to justify a direct application.",
+        "Apply + Network": "The role is worth applying to, but sponsorship or fit uncertainty makes parallel networking important.",
         "Network First": "The role may be worth pursuing, but a warm conversation should come before or alongside applying.",
         "Skip": "The role has either weak fit, high sponsorship friction, or both.",
     }
@@ -666,18 +879,29 @@ def generate_outreach(function):
     )
 
 
-def generate_why_decision(fit_score, sponsorship_risk, decision, matched, gaps, risk_matches):
+def generate_why_decision(
+    fit_score,
+    sponsorship_risk,
+    decision,
+    matched,
+    gaps,
+    advanced_gaps,
+    risk_matches,
+):
     reasons = [
-        f"The resume fit score is {fit_score}/10, which indicates a {fit_summary(fit_score).lower()}.",
+        f"The resume fit score is {fit_score}/10, reflecting weighted core, secondary, and advanced requirement coverage rather than simple keyword overlap.",
         f"Sponsorship risk is marked as {sponsorship_risk}: {risk_note(sponsorship_risk)}",
         f"The recommended decision is {decision}: {decision_note(decision)}",
     ]
 
     if matched:
-        reasons.append("Matched strengths include " + ", ".join(matched[:6]) + ".")
+        reasons.append("Matched core strengths include " + ", ".join(matched[:6]) + ".")
 
     if gaps:
-        reasons.append("The biggest resume gaps to address are " + ", ".join(gaps[:5]) + ".")
+        reasons.append("Regular resume gaps to address are " + ", ".join(gaps[:5]) + ".")
+
+    if advanced_gaps:
+        reasons.append("Advanced role gaps include " + ", ".join(advanced_gaps[:7]) + ".")
 
     if risk_matches:
         reasons.append("Sponsorship signal terms found: " + ", ".join(risk_matches[:4]) + ".")
@@ -691,6 +915,12 @@ def generate_next_actions(decision, sponsorship_risk, gaps, function):
             f"Tailor the top third of your resume toward {function}.",
             "Submit the application while the role is fresh.",
             "Send a short LinkedIn note to one team member or recruiter within 24 hours.",
+        ]
+    elif decision == "Apply + Network":
+        actions = [
+            f"Apply with a resume tailored toward {function} and the strongest matched requirements.",
+            "Contact a recruiter, alum, or team member to clarify sponsorship expectations.",
+            f"Add evidence for {gaps[0] if gaps else 'one specialized role requirement'} before or soon after applying.",
         ]
     elif decision == "Network First":
         actions = [
@@ -718,6 +948,7 @@ def status_tone(value):
         "Unclear": "tone-unclear",
         "Likely No": "tone-no",
         "Apply Now": "tone-apply",
+        "Apply + Network": "tone-network",
         "Network First": "tone-network",
         "Skip": "tone-skip",
     }
@@ -850,7 +1081,10 @@ if analyze:
         sponsorship_risk, risk_matches = detect_sponsorship_risk(job_description)
         function, category_scores = classify_function(job_description)
         keywords = extract_keywords(job_description)
-        fit_score, matched_keywords, gaps = calculate_fit_score(job_description, profile_summary)
+        fit_score, matched_keywords, gaps, matched_advanced, advanced_gaps = calculate_fit_score(
+            job_description,
+            profile_summary,
+        )
         decision = generate_decision(fit_score, sponsorship_risk)
         outreach = generate_outreach(function)
         why_decision = generate_why_decision(
@@ -859,6 +1093,7 @@ if analyze:
             decision,
             matched_keywords,
             gaps,
+            advanced_gaps,
             risk_matches,
         )
         next_actions = generate_next_actions(decision, sponsorship_risk, gaps, function)
@@ -944,6 +1179,22 @@ if analyze:
                     render_pills(gaps, "tone-gap")
                 else:
                     st.write("Strong keyword alignment. No major tracked gaps detected.")
+
+            advanced_match_col, advanced_gap_col = st.columns(2)
+
+            with advanced_match_col:
+                st.markdown("**Matched advanced requirements**")
+                if matched_advanced:
+                    render_pills(matched_advanced, "tone-match")
+                else:
+                    st.write("No specialized role requirements were found in the profile summary.")
+
+            with advanced_gap_col:
+                st.markdown("**Advanced role gaps**")
+                if advanced_gaps:
+                    render_pills(advanced_gaps, "tone-gap")
+                else:
+                    st.write("No specialized advanced gaps detected from the tracked role signals.")
 
             with st.expander("Role category signal detail"):
                 sorted_scores = sorted(category_scores.items(), key=lambda item: item[1], reverse=True)
